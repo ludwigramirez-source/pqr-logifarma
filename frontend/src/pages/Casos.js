@@ -181,7 +181,7 @@ const Casos = () => {
                   casos.map((caso) => (
                     <TableRow key={caso.id}>
                       <TableCell className="font-medium">{caso.numero_caso}</TableCell>
-                      <TableCell className="font-mono">{caso.paciente?.identificacion || '-'}</TableCell>
+                      <TableCell>{caso.paciente?.identificacion || '-'}</TableCell>
                       <TableCell>{caso.paciente ? `${caso.paciente.nombre} ${caso.paciente.apellidos}` : '-'}</TableCell>
                       <TableCell>{formatDate(caso.fecha_creacion)}</TableCell>
                       <TableCell>
