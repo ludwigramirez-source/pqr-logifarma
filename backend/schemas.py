@@ -137,6 +137,7 @@ class Caso(BaseModel):
     fecha_actualizacion: datetime
     fecha_cierre: Optional[datetime]
     tiempo_resolucion_horas: Optional[float]
+    paciente: Optional[Paciente] = None
 
 class CasoDetalle(Caso):
     paciente: Paciente
