@@ -522,42 +522,88 @@ const EmbeddedView = () => {
                   </Button>
                 </div>
 
-                {paciente && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <p className="font-semibold">
-                      {paciente.nombre} {paciente.apellidos} - CC: {paciente.identificacion}
+                {!paciente ? (
+                  <div className="p-8 text-center border-2 border-dashed rounded-lg">
+                    <p className="text-muted-foreground mb-4">
+                      Primero busque un paciente en la pestaña "Gestión PQR"
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Casos Totales: {casosPaciente.length}
-                    </p>
+                    <Button onClick={() => setActiveTab('gestion')} variant="outline">
+                      Ir a Gestión PQR
+                    </Button>
                   </div>
-                )}
+                ) : (
+                  <>
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 border-2 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Paciente</p>
+                          <p className="font-bold text-lg">
+                            {paciente.nombre} {paciente.apellidos}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Identificación</p>
+                          <p className="font-semibold">{paciente.identificacion}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Celular</p>
+                          <p className="font-semibold">{paciente.celular}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total de Casos</p>
+                          <p className="font-bold text-2xl text-green-600">{casosPaciente.length}</p>
+                        </div>
+                      </div>
+                    </div>
 
-                <div className="space-y-3">
-                  {casosPaciente.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      No hay casos registrados para este paciente
-                    </p>
-                  ) : (
-                    casosPaciente.map((caso) => (
-                      <Card key={caso.id} className="border-2">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-1">
-                              <p className="font-semibold text-lg">{caso.numero_caso}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Fecha: {formatDateShort(caso.fecha_creacion)}
-                              </p>
+                    <div className="space-y-3">
+                      {casosPaciente.length === 0 ? (
+                        <div className="p-8 text-center border-2 border-dashed rounded-lg">
+                          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                          <p className="text-muted-foreground">
+                            No hay casos registrados para este paciente
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">Casos Registrados</h4>
+                            <div className="flex gap-2 text-sm">
+                              <span className="px-2 py-1 bg-red-100 text-red-800 rounded">
+                                Abiertos: {casosPaciente.filter(c => c.estado === 'ABIERTO').length}
+                              </span>
+                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                                Cerrados: {casosPaciente.filter(c => c.estado === 'CERRADO').length}
+                              </span>
                             </div>
-                            <span className={`estado-badge-${caso.estado}`}>
-                              {caso.estado.replace('_', ' ')}
-                            </span>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                          {casosPaciente.map((caso) => (
+                            <Card key={caso.id} className="border-2 hover:shadow-md transition-shadow">
+                              <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="space-y-1 flex-1">
+                                    <p className="font-bold text-lg text-green-700">{caso.numero_caso}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      📅 {formatDateShort(caso.fecha_creacion)}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <span className={`estado-badge-${caso.estado}`}>
+                                      {caso.estado.replace('_', ' ')}
+                                    </span>
+                                    <span className={`priority-badge-${caso.prioridad}`}>
+                                      {caso.prioridad}
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </TabsContent>
           </Tabs>
