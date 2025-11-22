@@ -491,7 +491,7 @@ const EmbeddedView = () => {
               </div>
 
               {/* Información del Caso */}
-              <div className="space-y-4 p-4 border-2 rounded-lg bg-white">
+              <div id="caso-section" className="space-y-4 p-4 border-2 rounded-lg bg-white">
                 <h3 className="text-lg font-semibold">Información del Caso</h3>
                 
                 <div className="flex gap-2 mb-4">
