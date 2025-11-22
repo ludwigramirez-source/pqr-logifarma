@@ -1,0 +1,308 @@
+import React, { useState, useEffect } from 'react';
+import { usuariosAPI, motivosAPI } from '../services/api';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Badge } from '../components/ui/badge';
+import { toast } from 'sonner';
+import { Settings, UserPlus, Edit, Trash2, FileText, Plus, Save } from 'lucide-react';
+import { formatDate } from '../lib/utils';
+
+const Configuracion = () => {
+  const [usuarios, setUsuarios] = useState([]);
+  const [motivos, setMotivos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Gestión de usuarios
+  const [showUserDialog, setShowUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userForm, setUserForm] = useState({
+    username: '',
+    nombre_completo: '',
+    email: '',
+    password: '',
+    rol: 'agente'
+  });
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      const [usuariosRes, motivosRes] = await Promise.all([
+        usuariosAPI.getAll(),
+        motivosAPI.getAll()
+      ]);
+      setUsuarios(usuariosRes.data);
+      setMotivos(motivosRes.data);
+    } catch (error) {
+      toast.error('Error al cargar datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const abrirDialogUsuario = (usuario = null) => {
+    if (usuario) {
+      setEditingUser(usuario);
+      setUserForm({
+        username: usuario.username,
+        nombre_completo: usuario.nombre_completo,
+        email: usuario.email,
+        password: '',
+        rol: usuario.rol
+      });
+    } else {
+      setEditingUser(null);
+      setUserForm({
+        username: '',
+        nombre_completo: '',
+        email: '',
+        password: '',
+        rol: 'agente'
+      });
+    }
+    setShowUserDialog(true);
+  };
+
+  const guardarUsuario = async () => {
+    if (!userForm.username || !userForm.nombre_completo || !userForm.email) {
+      toast.error('Complete todos los campos obligatorios');
+      return;
+    }
+
+    if (!editingUser && !userForm.password) {
+      toast.error('La contraseña es obligatoria para nuevos usuarios');
+      return;
+    }
+
+    try {
+      if (editingUser) {
+        const updateData = { ...userForm };
+        if (!updateData.password) {
+          delete updateData.password;
+        }
+        await usuariosAPI.update(editingUser.id, updateData);
+        toast.success('Usuario actualizado exitosamente');
+      } else {
+        await usuariosAPI.create(userForm);
+        toast.success('Usuario creado exitosamente');
+      }
+      setShowUserDialog(false);
+      cargarDatos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al guardar usuario');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6" data-testid="configuracion-page">
+      <div>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
+          Configuración del Sistema
+        </h1>
+        <p className="text-muted-foreground">Gestión de usuarios y configuraciones</p>
+      </div>
+
+      <Tabs defaultValue="usuarios" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="usuarios" data-testid="tab-usuarios">
+            <UserPlus className="h-4 w-4 mr-2" />
+            Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="motivos" data-testid="tab-motivos">
+            <FileText className="h-4 w-4 mr-2" />
+            Motivos PQR
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB: Usuarios */}
+        <TabsContent value="usuarios" className="space-y-4">
+          <Card className="border-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Gestión de Usuarios</CardTitle>
+              <Button onClick={() => abrirDialogUsuario()} data-testid="btn-nuevo-usuario">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Nuevo Usuario
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Nombre Completo</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Rol</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {usuarios.map((usuario) => (
+                    <TableRow key={usuario.id}>
+                      <TableCell className="font-medium">{usuario.username}</TableCell>
+                      <TableCell>{usuario.nombre_completo}</TableCell>
+                      <TableCell>{usuario.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={usuario.rol === 'administrador' ? 'default' : 'secondary'}>
+                          {usuario.rol}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={usuario.activo ? 'default' : 'destructive'}>
+                          {usuario.activo ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => abrirDialogUsuario(usuario)}
+                          data-testid={`btn-editar-usuario-${usuario.id}`}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB: Motivos */}
+        <TabsContent value="motivos" className="space-y-4">
+          <Card className="border-2">
+            <CardHeader>
+              <CardTitle>Motivos de PQR Configurados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {motivos.map((motivo, index) => (
+                  <div
+                    key={motivo.id}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-white"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-muted-foreground">#{index + 1}</span>
+                      <span className="font-medium">{motivo.nombre}</span>
+                    </div>
+                    <Badge variant={motivo.activo ? 'default' : 'secondary'}>
+                      {motivo.activo ? 'Activo' : 'Inactivo'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialog para Crear/Editar Usuario */}
+      <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {editingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Usuario *</Label>
+                <Input
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  disabled={!!editingUser}
+                  data-testid="input-username"
+                />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  data-testid="input-email"
+                />
+              </div>
+              <div className="col-span-2">
+                <Label>Nombre Completo *</Label>
+                <Input
+                  value={userForm.nombre_completo}
+                  onChange={(e) => setUserForm({ ...userForm, nombre_completo: e.target.value })}
+                  data-testid="input-nombre-completo"
+                />
+              </div>
+              <div>
+                <Label>Contraseña {!editingUser && '*'}</Label>
+                <Input
+                  type="password"
+                  value={userForm.password}
+                  onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                  placeholder={editingUser ? 'Dejar vacío para no cambiar' : ''}
+                  data-testid="input-password"
+                />
+              </div>
+              <div>
+                <Label>Rol *</Label>
+                <Select 
+                  value={userForm.rol} 
+                  onValueChange={(value) => setUserForm({ ...userForm, rol: value })}
+                >
+                  <SelectTrigger data-testid="select-rol">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agente">Agente</SelectItem>
+                    <SelectItem value="administrador">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {editingUser && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm">
+                  <span className="font-semibold">Creado:</span> {formatDate(editingUser.fecha_creacion)}
+                </p>
+                {editingUser.ultimo_acceso && (
+                  <p className="text-sm">
+                    <span className="font-semibold">Último acceso:</span> {formatDate(editingUser.ultimo_acceso)}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUserDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarUsuario} data-testid="btn-guardar-usuario">
+              <Save className="h-4 w-4 mr-2" />
+              {editingUser ? 'Actualizar' : 'Crear'} Usuario
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default Configuracion;
