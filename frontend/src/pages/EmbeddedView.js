@@ -530,10 +530,33 @@ const EmbeddedView = () => {
                 </div>
 
                 {casoExistente && (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm font-semibold text-blue-900">
-                      Caso encontrado: {casoExistente.numero_caso}
-                    </p>
+                  <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-blue-900 mb-1">
+                          📋 Dando seguimiento al caso: {casoExistente.numero_caso}
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          Puede actualizar el estado, prioridad o agregar más observaciones a este caso existente
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          setCasoExistente(null);
+                          setNumeroCasoBuscar('');
+                          setEstado('ABIERTO');
+                          setPrioridad('MEDIA');
+                          setMotivoId('');
+                          setDescripcion('');
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        className="text-blue-700 hover:text-blue-900"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Cancelar
+                      </Button>
+                    </div>
                   </div>
                 )}
 
