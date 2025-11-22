@@ -286,6 +286,7 @@ const EmbeddedView = () => {
                     </div>
                   </div>
                 )}
+              </div>
 
               {/* Datos del Paciente */}
               <div className="space-y-4 p-4 border-2 rounded-lg bg-white">
