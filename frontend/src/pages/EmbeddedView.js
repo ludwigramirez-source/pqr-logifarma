@@ -324,22 +324,92 @@ const EmbeddedView = () => {
                   </Button>
                 </div>
                 {paciente && (
-                  <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-semibold text-green-900">
-                          Paciente Encontrado: {paciente.nombre} {paciente.apellidos}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          CC: {paciente.identificacion} | Celular: {paciente.celular}
-                        </p>
+                  <>
+                    <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-green-900">
+                            Paciente Encontrado: {paciente.nombre} {paciente.apellidos}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            CC: {paciente.identificacion} | Celular: {paciente.celular}
+                          </p>
+                        </div>
+                        <Button onClick={verHistorial} variant="outline" size="sm" data-testid="btn-ver-historial">
+                          <History className="h-4 w-4 mr-2" />
+                          Ver Historial Completo
+                        </Button>
                       </div>
-                      <Button onClick={verHistorial} variant="outline" size="sm" data-testid="btn-ver-historial">
-                        <History className="h-4 w-4 mr-2" />
-                        Ver Historial
-                      </Button>
                     </div>
-                  </div>
+
+                    {/* Casos Pendientes del Paciente */}
+                    {casosPaciente.length > 0 && (
+                      <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <h4 className="font-bold text-lg text-orange-900">
+                              ⚠️ Casos Pendientes de Resolución
+                            </h4>
+                            <p className="text-sm text-orange-700">
+                              Este paciente tiene {casosPaciente.length} caso(s) abierto(s) o en proceso
+                            </p>
+                          </div>
+                          <Button 
+                            onClick={crearNuevoCaso}
+                            variant="outline"
+                            size="sm"
+                            className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                            data-testid="btn-crear-caso-nuevo-directo"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Crear Caso Nuevo
+                          </Button>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          {casosPaciente.map((caso) => (
+                            <div
+                              key={caso.id}
+                              className="p-3 bg-white border-2 rounded-lg hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="font-bold text-base">{caso.numero_caso}</p>
+                                    <span className={`estado-badge-${caso.estado} text-xs`}>
+                                      {caso.estado.replace('_', ' ')}
+                                    </span>
+                                    <span className={`priority-badge-${caso.prioridad} text-xs`}>
+                                      {caso.prioridad}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    📅 Creado: {formatDateShort(caso.fecha_creacion)}
+                                  </p>
+                                </div>
+                                <Button
+                                  onClick={() => seleccionarCasoPendiente(caso)}
+                                  size="sm"
+                                  className="bg-blue-600 hover:bg-blue-700"
+                                  data-testid={`btn-seleccionar-caso-${caso.id}`}
+                                >
+                                  <FileText className="h-4 w-4 mr-1" />
+                                  Dar Seguimiento
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-xs text-blue-900">
+                            <strong>💡 Tip:</strong> Si la llamada es sobre uno de estos casos, haz clic en "Dar Seguimiento". 
+                            Si es un nuevo problema, haz clic en "Crear Caso Nuevo".
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
