@@ -96,12 +96,20 @@ const Casos = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Input
               placeholder="Número de caso"
               value={numeroCaso}
               onChange={(e) => setNumeroCaso(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && buscarCasos()}
               data-testid="filter-numero-caso"
+            />
+            <Input
+              placeholder="Cédula del paciente"
+              value={cedulaPaciente}
+              onChange={(e) => setCedulaPaciente(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && buscarCasos()}
+              data-testid="filter-cedula-paciente"
             />
             <Select value={estado} onValueChange={setEstado}>
               <SelectTrigger data-testid="filter-estado">
