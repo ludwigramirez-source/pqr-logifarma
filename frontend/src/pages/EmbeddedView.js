@@ -98,9 +98,28 @@ const EmbeddedView = () => {
         setDireccion(p.direccion);
         setDepartamento(p.departamento);
         setCiudad(p.ciudad);
-        toast.success('Paciente encontrado');
+        
+        // Buscar casos abiertos o en proceso del paciente
+        const casosResponse = await casosAPI.getAll({ 
+          paciente_identificacion: identificacion,
+          limit: 100 
+        });
+        
+        // Filtrar solo casos ABIERTOS o EN_PROCESO
+        const casosPendientes = casosResponse.data.filter(
+          c => c.estado === 'ABIERTO' || c.estado === 'EN_PROCESO'
+        );
+        
+        if (casosPendientes.length > 0) {
+          setCasosPaciente(casosPendientes);
+          toast.success(`Paciente encontrado con ${casosPendientes.length} caso(s) pendiente(s)`);
+        } else {
+          setCasosPaciente([]);
+          toast.success('Paciente encontrado sin casos pendientes');
+        }
       } else {
         setPaciente(null);
+        setCasosPaciente([]);
         setNombre('');
         setApellidos('');
         setCelular('');
