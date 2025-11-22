@@ -6,8 +6,11 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Casos from './pages/Casos';
+import CrearCaso from './pages/CrearCaso';
+import DetalleCaso from './pages/DetalleCaso';
 import EmbeddedView from './pages/EmbeddedView';
 import Alertas from './pages/Alertas';
+import Configuracion from './pages/Configuracion';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
