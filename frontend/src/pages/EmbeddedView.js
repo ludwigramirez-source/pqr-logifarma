@@ -158,6 +158,42 @@ const EmbeddedView = () => {
     }
   };
 
+  const seleccionarCasoPendiente = (caso) => {
+    setCasoExistente(caso);
+    setNumeroCasoBuscar(caso.numero_caso);
+    setEstado(caso.estado);
+    setPrioridad(caso.prioridad);
+    setMotivoId(caso.motivo_id.toString());
+    setDescripcion(caso.descripcion);
+    toast.success(`Caso ${caso.numero_caso} seleccionado para seguimiento`);
+    
+    // Scroll al formulario del caso
+    setTimeout(() => {
+      const casoSection = document.getElementById('caso-section');
+      if (casoSection) {
+        casoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const crearNuevoCaso = () => {
+    setCasoExistente(null);
+    setNumeroCasoBuscar('');
+    setEstado('ABIERTO');
+    setPrioridad('MEDIA');
+    setMotivoId('');
+    setDescripcion('');
+    toast.info('Formulario preparado para crear un nuevo caso');
+    
+    // Scroll al formulario del caso
+    setTimeout(() => {
+      const casoSection = document.getElementById('caso-section');
+      if (casoSection) {
+        casoSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
   const verHistorial = async () => {
     if (!paciente) {
       toast.error('Primero busque un paciente');
