@@ -29,6 +29,16 @@ const Configuracion = () => {
     rol: 'agente'
   });
 
+  // Gestión de motivos
+  const [showMotivoDialog, setShowMotivoDialog] = useState(false);
+  const [editingMotivo, setEditingMotivo] = useState(null);
+  const [motivoForm, setMotivoForm] = useState({
+    nombre: '',
+    descripcion: '',
+    orden: 0,
+    activo: true
+  });
+
   useEffect(() => {
     cargarDatos();
   }, []);
