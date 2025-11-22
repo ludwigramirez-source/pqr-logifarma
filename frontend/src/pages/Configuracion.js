@@ -135,10 +135,24 @@ const Configuracion = () => {
           <Card className="border-2">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Gestión de Usuarios</CardTitle>
-              <Button onClick={() => abrirDialogUsuario()} data-testid="btn-nuevo-usuario">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Nuevo Usuario
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => window.location.href = '/usuarios/crear'} 
+                  data-testid="btn-crear-usuario-pagina"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Crear Usuario
+                </Button>
+                <Button 
+                  onClick={() => abrirDialogUsuario()} 
+                  variant="outline"
+                  data-testid="btn-nuevo-usuario-modal"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edición Rápida
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
