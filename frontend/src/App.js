@@ -11,6 +11,7 @@ import DetalleCaso from './pages/DetalleCaso';
 import EmbeddedView from './pages/EmbeddedView';
 import Alertas from './pages/Alertas';
 import Configuracion from './pages/Configuracion';
+import CrearUsuario from './pages/CrearUsuario';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
