@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
-import { Search, Save, FileText, History, X } from 'lucide-react';
+import { Search, Save, FileText, History, X, Plus } from 'lucide-react';
 import { formatDateShort } from '../lib/utils';
 
 const EmbeddedView = () => {
