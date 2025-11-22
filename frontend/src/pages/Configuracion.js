@@ -111,6 +111,49 @@ const Configuracion = () => {
     }
   };
 
+  const abrirDialogMotivo = (motivo = null) => {
+    if (motivo) {
+      setEditingMotivo(motivo);
+      setMotivoForm({
+        nombre: motivo.nombre,
+        descripcion: motivo.descripcion || '',
+        orden: motivo.orden,
+        activo: motivo.activo
+      });
+    } else {
+      setEditingMotivo(null);
+      const maxOrden = motivos.length > 0 ? Math.max(...motivos.map(m => m.orden)) : 0;
+      setMotivoForm({
+        nombre: '',
+        descripcion: '',
+        orden: maxOrden + 1,
+        activo: true
+      });
+    }
+    setShowMotivoDialog(true);
+  };
+
+  const guardarMotivo = async () => {
+    if (!motivoForm.nombre) {
+      toast.error('El nombre del motivo es obligatorio');
+      return;
+    }
+
+    try {
+      if (editingMotivo) {
+        await motivosAPI.update(editingMotivo.id, motivoForm);
+        toast.success('Motivo actualizado exitosamente');
+      } else {
+        await motivosAPI.create(motivoForm);
+        toast.success('Motivo creado exitosamente');
+      }
+      setShowMotivoDialog(false);
+      cargarDatos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Error al guardar motivo');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
