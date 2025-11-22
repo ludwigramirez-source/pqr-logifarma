@@ -257,25 +257,55 @@ const Configuracion = () => {
         {/* TAB: Motivos */}
         <TabsContent value="motivos" className="space-y-4">
           <Card className="border-2">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Motivos de PQR Configurados</CardTitle>
+              <Button 
+                onClick={() => abrirDialogMotivo()} 
+                data-testid="btn-nuevo-motivo"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Motivo
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {motivos.map((motivo, index) => (
-                  <div
-                    key={motivo.id}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-white"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-muted-foreground">#{index + 1}</span>
-                      <span className="font-medium">{motivo.nombre}</span>
+                {motivos.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No hay motivos configurados
+                  </p>
+                ) : (
+                  motivos.map((motivo, index) => (
+                    <div
+                      key={motivo.id}
+                      className="flex items-center justify-between p-4 border-2 rounded-lg bg-white hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-center gap-4 flex-1">
+                        <span className="font-bold text-lg text-muted-foreground w-8">#{motivo.orden}</span>
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg">{motivo.nombre}</p>
+                          {motivo.descripcion && (
+                            <p className="text-sm text-muted-foreground mt-1">{motivo.descripcion}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Badge variant={motivo.activo ? 'default' : 'secondary'} className="text-sm">
+                          {motivo.activo ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => abrirDialogMotivo(motivo)}
+                          data-testid={`btn-editar-motivo-${motivo.id}`}
+                        >
+                          <Edit className="h-3 w-3 mr-1" />
+                          Editar
+                        </Button>
+                      </div>
                     </div>
-                    <Badge variant={motivo.activo ? 'default' : 'secondary'}>
-                      {motivo.activo ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
