@@ -49,6 +49,7 @@ const AppRoutes = () => {
         <Route path="casos/:id" element={<DetalleCaso />} />
         <Route path="alertas" element={<Alertas />} />
         <Route path="configuracion" element={<Configuracion />} />
+        <Route path="usuarios/crear" element={<CrearUsuario />} />
       </Route>
       
       <Route path="*" element={<Navigate to="/" replace />} />
