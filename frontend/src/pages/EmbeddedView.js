@@ -251,7 +251,7 @@ const EmbeddedView = () => {
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Search className="h-5 w-5" />
-                  Buscar Paciente
+                  Buscar Paciente por Cédula
                 </h3>
                 <div className="flex gap-2">
                   <div className="flex-1">
@@ -259,6 +259,7 @@ const EmbeddedView = () => {
                       placeholder="Ingrese cédula del paciente"
                       value={identificacion}
                       onChange={(e) => setIdentificacion(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && buscarPaciente()}
                       data-testid="input-cedula"
                     />
                   </div>
@@ -266,14 +267,25 @@ const EmbeddedView = () => {
                     <Search className="h-4 w-4 mr-2" />
                     Buscar
                   </Button>
-                  {paciente && (
-                    <Button onClick={verHistorial} variant="outline" data-testid="btn-ver-historial">
-                      <History className="h-4 w-4 mr-2" />
-                      Ver Historial
-                    </Button>
-                  )}
                 </div>
-              </div>
+                {paciente && (
+                  <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-green-900">
+                          Paciente Encontrado: {paciente.nombre} {paciente.apellidos}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          CC: {paciente.identificacion} | Celular: {paciente.celular}
+                        </p>
+                      </div>
+                      <Button onClick={verHistorial} variant="outline" size="sm" data-testid="btn-ver-historial">
+                        <History className="h-4 w-4 mr-2" />
+                        Ver Historial
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
               {/* Datos del Paciente */}
               <div className="space-y-4 p-4 border-2 rounded-lg bg-white">
