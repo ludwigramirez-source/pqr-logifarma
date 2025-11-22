@@ -66,11 +66,22 @@ const Casos = () => {
 
   return (
     <div className="space-y-6" data-testid="casos-page">
-      <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
-          Gestión de Casos
-        </h1>
-        <p className="text-muted-foreground">Listado y gestión de todos los casos PQR</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
+            Gestión de Casos
+          </h1>
+          <p className="text-muted-foreground">Listado y gestión de todos los casos PQR</p>
+        </div>
+        <Button 
+          onClick={() => navigate('/casos/crear')} 
+          size="lg"
+          data-testid="btn-crear-caso-nuevo"
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <FileText className="h-5 w-5 mr-2" />
+          Crear Nuevo Caso
+        </Button>
       </div>
 
       {/* Filtros */}
