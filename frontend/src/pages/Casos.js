@@ -162,6 +162,8 @@ const Casos = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Número Caso</TableHead>
+                  <TableHead>Cédula Paciente</TableHead>
+                  <TableHead>Paciente</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Prioridad</TableHead>
                   <TableHead>Estado</TableHead>
@@ -171,7 +173,7 @@ const Casos = () => {
               <TableBody>
                 {casos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       No se encontraron casos
                     </TableCell>
                   </TableRow>
@@ -179,6 +181,8 @@ const Casos = () => {
                   casos.map((caso) => (
                     <TableRow key={caso.id}>
                       <TableCell className="font-medium">{caso.numero_caso}</TableCell>
+                      <TableCell className="font-mono">{caso.paciente?.identificacion || '-'}</TableCell>
+                      <TableCell>{caso.paciente ? `${caso.paciente.nombre} ${caso.paciente.apellidos}` : '-'}</TableCell>
                       <TableCell>{formatDate(caso.fecha_creacion)}</TableCell>
                       <TableCell>
                         <span className={`priority-badge-${caso.prioridad}`}>
