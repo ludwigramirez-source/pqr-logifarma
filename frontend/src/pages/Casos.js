@@ -18,6 +18,7 @@ const Casos = () => {
   
   // Filtros
   const [numeroCaso, setNumeroCaso] = useState('');
+  const [cedulaPaciente, setCedulaPaciente] = useState('');
   const [estado, setEstado] = useState('');
   const [prioridad, setPrioridad] = useState('');
 
