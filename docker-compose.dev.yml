@@ -1,0 +1,80 @@
+version: '3.8'
+
+# Docker Compose para DESARROLLO
+# Uso: docker-compose -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: logifarma_db_dev
+    environment:
+      POSTGRES_DB: logifarma_pqr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    networks:
+      - logifarma_network_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API - FastAPI con hot-reload
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: logifarma_backend_dev
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/logifarma_pqr
+      SECRET_KEY: dev-secret-key-not-for-production
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_HOURS: 8
+      CORS_ORIGINS: "*"
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - logifarma_network_dev
+    volumes:
+      # Hot-reload: cambios en código se reflejan automáticamente
+      - ./backend:/app
+    command: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # Frontend - React con hot-reload (dev server)
+  frontend:
+    image: node:20-alpine
+    container_name: logifarma_frontend_dev
+    working_dir: /app
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:8001
+      CHOKIDAR_USEPOLLING: "true"  # Para hot-reload en Windows
+    ports:
+      - "3002:3000"
+    depends_on:
+      - backend
+    networks:
+      - logifarma_network_dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Evitar sobrescribir node_modules
+    command: sh -c "yarn install && yarn start"
+    restart: unless-stopped
+    stdin_open: true  # Necesario para React
+    tty: true
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  logifarma_network_dev:
+    driver: bridge
