@@ -367,20 +367,26 @@ async def actualizar_caso(
         raise HTTPException(status_code=404, detail="Caso no encontrado")
     
     estado_anterior = caso.estado.value if caso.estado else None
+    comentario = caso_update.pop('comentario', None)
     
     # Actualizar campos
-    update_data = caso_update.model_dump(exclude_unset=True)
-    for key, value in update_data.items():
-        setattr(caso, key, value)
+    for key, value in caso_update.items():
+        if key in ['estado', 'prioridad', 'agente_asignado_id', 'descripcion']:
+            if key == 'estado':
+                setattr(caso, key, EstadoCasoEnum[value] if isinstance(value, str) else value)
+            elif key == 'prioridad':
+                setattr(caso, key, PrioridadEnum[value] if isinstance(value, str) else value)
+            else:
+                setattr(caso, key, value)
     
     # Si se cierra el caso, calcular tiempo de resolución
-    if caso_update.estado == EstadoCasoEnum.CERRADO and not caso.fecha_cierre:
+    if caso.estado == EstadoCasoEnum.CERRADO and not caso.fecha_cierre:
         caso.fecha_cierre = datetime.now(timezone.utc)
         diff = caso.fecha_cierre - caso.fecha_creacion
         caso.tiempo_resolucion_horas = diff.total_seconds() / 3600
     
-    # Registrar cambio de estado en historial
-    if caso_update.estado and estado_anterior != caso.estado.value:
+    # Registrar cambio de estado en historial si cambió
+    if estado_anterior != caso.estado.value:
         historial = HistorialEstado(
             caso_id=caso.id,
             estado_anterior=estado_anterior,
