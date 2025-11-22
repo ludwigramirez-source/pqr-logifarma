@@ -398,6 +398,93 @@ const Configuracion = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog para Crear/Editar Motivo */}
+      <Dialog open={showMotivoDialog} onOpenChange={setShowMotivoDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {editingMotivo ? 'Editar Motivo PQR' : 'Crear Nuevo Motivo PQR'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-4">
+              <div>
+                <Label>Nombre del Motivo *</Label>
+                <Input
+                  value={motivoForm.nombre}
+                  onChange={(e) => setMotivoForm({ ...motivoForm, nombre: e.target.value })}
+                  placeholder="Ej: Retraso en entrega"
+                  data-testid="input-motivo-nombre"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Este nombre aparecerá en el formulario de creación de casos
+                </p>
+              </div>
+              <div>
+                <Label>Descripción (opcional)</Label>
+                <Input
+                  value={motivoForm.descripcion}
+                  onChange={(e) => setMotivoForm({ ...motivoForm, descripcion: e.target.value })}
+                  placeholder="Descripción breve del motivo"
+                  data-testid="input-motivo-descripcion"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Orden de Visualización *</Label>
+                  <Input
+                    type="number"
+                    value={motivoForm.orden}
+                    onChange={(e) => setMotivoForm({ ...motivoForm, orden: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    data-testid="input-motivo-orden"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Orden en el que aparece en los dropdowns
+                  </p>
+                </div>
+                <div>
+                  <Label>Estado</Label>
+                  <Select 
+                    value={motivoForm.activo.toString()} 
+                    onValueChange={(value) => setMotivoForm({ ...motivoForm, activo: value === 'true' })}
+                  >
+                    <SelectTrigger data-testid="select-motivo-activo">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Activo</SelectItem>
+                      <SelectItem value="false">Inactivo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {motivoForm.activo ? 'Visible en formularios' : 'Oculto en formularios'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {editingMotivo && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-semibold text-blue-900">Nota:</p>
+                <p className="text-sm text-blue-800">
+                  Si desactivas este motivo, dejará de aparecer en el formulario de creación de casos, pero los casos existentes con este motivo seguirán siendo válidos.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMotivoDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={guardarMotivo} data-testid="btn-guardar-motivo" className="bg-green-600 hover:bg-green-700">
+              <Save className="h-4 w-4 mr-2" />
+              {editingMotivo ? 'Actualizar' : 'Crear'} Motivo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
