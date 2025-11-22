@@ -358,8 +358,7 @@ async def crear_caso(
 @api_router.put("/casos/{caso_id}", response_model=schemas.Caso)
 async def actualizar_caso(
     caso_id: int,
-    caso_update: schemas.CasoUpdate,
-    comentario: Optional[str] = None,
+    caso_update: dict,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
