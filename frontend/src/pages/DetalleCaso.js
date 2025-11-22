@@ -357,14 +357,14 @@ const DetalleCaso = () => {
             <div>
               <Label>Asignar a Agente</Label>
               <Select 
-                value={cambiosEditados.agente_asignado_id?.toString() || ''} 
-                onValueChange={(value) => setCambiosEditados({ ...cambiosEditados, agente_asignado_id: value ? parseInt(value) : null })}
+                value={cambiosEditados.agente_asignado_id?.toString() || 'sin-asignar'} 
+                onValueChange={(value) => setCambiosEditados({ ...cambiosEditados, agente_asignado_id: value === 'sin-asignar' ? null : parseInt(value) })}
               >
                 <SelectTrigger data-testid="edit-select-agente">
                   <SelectValue placeholder="Sin asignar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="sin-asignar">Sin asignar</SelectItem>
                   {agentes.map((a) => (
                     <SelectItem key={a.id} value={a.id.toString()}>
                       {a.nombre_completo} ({a.rol})
