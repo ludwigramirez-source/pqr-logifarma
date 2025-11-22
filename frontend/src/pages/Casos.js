@@ -46,6 +46,7 @@ const Casos = () => {
     try {
       const params = {};
       if (numeroCaso) params.numero_caso = numeroCaso;
+      if (cedulaPaciente) params.paciente_identificacion = cedulaPaciente;
       if (estado) params.estado = estado;
       if (prioridad) params.prioridad = prioridad;
       
@@ -60,6 +61,7 @@ const Casos = () => {
 
   const limpiarFiltros = () => {
     setNumeroCaso('');
+    setCedulaPaciente('');
     setEstado('');
     setPrioridad('');
     loadData();
