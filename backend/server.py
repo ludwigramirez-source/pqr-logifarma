@@ -275,7 +275,7 @@ async def listar_casos(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Caso)
+    query = db.query(Caso).options(joinedload(Caso.paciente))
     
     if numero_caso:
         query = query.filter(Caso.numero_caso.ilike(f"%{numero_caso}%"))
