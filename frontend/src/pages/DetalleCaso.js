@@ -55,7 +55,11 @@ const DetalleCaso = () => {
 
   const guardarCambios = async () => {
     try {
-      await casosAPI.update(id, cambiosEditados, comentario);
+      const updateData = { ...cambiosEditados };
+      if (comentario) {
+        updateData.comentario = comentario;
+      }
+      await casosAPI.update(id, updateData);
       toast.success('Caso actualizado exitosamente');
       setShowEditDialog(false);
       cargarDatos();
