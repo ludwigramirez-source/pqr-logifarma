@@ -78,7 +78,7 @@ const CrearUsuario = () => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Configuración
         </Button>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
+        <h1 className="page-title text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
           Crear Nuevo Usuario
         </h1>
         <p className="text-muted-foreground">Complete el formulario para crear un nuevo usuario del sistema</p>

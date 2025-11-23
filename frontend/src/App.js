@@ -12,6 +12,7 @@ import EmbeddedView from './pages/EmbeddedView';
 import Alertas from './pages/Alertas';
 import Configuracion from './pages/Configuracion';
 import CrearUsuario from './pages/CrearUsuario';
+import Reportes from './pages/Reportes';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -48,6 +49,7 @@ const AppRoutes = () => {
         <Route path="casos/crear" element={<CrearCaso />} />
         <Route path="casos/:id" element={<DetalleCaso />} />
         <Route path="alertas" element={<Alertas />} />
+        <Route path="reportes" element={<Reportes />} />
         <Route path="configuracion" element={<Configuracion />} />
         <Route path="usuarios/crear" element={<CrearUsuario />} />
       </Route>

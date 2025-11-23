@@ -70,6 +70,15 @@ export const metricasAPI = {
   getCasosPorHora: (fecha) => api.get('/metricas/casos-por-hora', { params: { fecha } }),
   getCasosPorMotivo: (inicio, fin) => api.get('/metricas/casos-por-motivo', { params: { inicio, fin } }),
   getDesempenoAgentes: (inicio, fin) => api.get('/metricas/desempeno-agentes', { params: { inicio, fin } }),
+  getTiempoResolucion: (inicio, fin, agruparPor = 'general') => api.get('/metricas/tiempo-resolucion', { params: { inicio, fin, agrupar_por: agruparPor } }),
+  getTendenciaHistorica: (inicio, fin, agruparPor = 'dia') => api.get('/metricas/tendencia-historica', { params: { inicio, fin, agrupar_por: agruparPor } }),
+};
+
+export const reportesAPI = {
+  generar: (params) => api.post('/reportes/generar', null, {
+    params,
+    responseType: 'blob'
+  }),
 };
 
 export const usuariosAPI = {

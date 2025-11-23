@@ -108,7 +108,7 @@ const DetalleCaso = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver a Casos
           </Button>
-          <h1 className="text-3xl font-bold" style={{ color: 'hsl(141, 81%, 31%)' }}>
+          <h1 className="page-title text-3xl font-bold" style={{ color: 'hsl(141, 81%, 31%)' }}>
             Caso {caso.numero_caso}
           </h1>
           <p className="text-muted-foreground">Detalles completos del caso</p>

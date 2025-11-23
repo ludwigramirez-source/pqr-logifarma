@@ -50,7 +50,7 @@ const Alertas = () => {
   return (
     <div className="space-y-6" data-testid="alertas-page">
       <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
+        <h1 className="page-title text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
           Alertas
         </h1>
         <p className="text-muted-foreground">

@@ -601,6 +601,248 @@ async def obtener_desempeno_agentes(
         "promedio_horas": round(r.promedio_horas, 2) if r.promedio_horas else 0
     } for r in resultados]
 
+@api_router.get("/metricas/tiempo-resolucion")
+async def obtener_tiempo_resolucion(
+    inicio: str,
+    fin: str,
+    agrupar_por: str = "general",  # general, motivo, prioridad
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    fecha_inicio = datetime.fromisoformat(inicio)
+    fecha_fin = datetime.fromisoformat(fin)
+
+    # Calcular promedio general y SLA
+    casos_cerrados = db.query(Caso).filter(
+        Caso.estado == EstadoCasoEnum.CERRADO,
+        Caso.fecha_cierre >= fecha_inicio,
+        Caso.fecha_cierre <= fecha_fin,
+        Caso.tiempo_resolucion_horas.isnot(None)
+    ).all()
+
+    total = len(casos_cerrados)
+    if total == 0:
+        return {
+            "periodo": {"inicio": inicio, "fin": fin},
+            "agrupacion": agrupar_por,
+            "datos": [],
+            "promedio_general": 0,
+            "casos_dentro_sla": 0,
+            "casos_fuera_sla": 0,
+            "porcentaje_cumplimiento_sla": 0
+        }
+
+    tiempos = [c.tiempo_resolucion_horas for c in casos_cerrados]
+    promedio_general = sum(tiempos) / len(tiempos)
+    casos_dentro_sla = sum(1 for t in tiempos if t <= 120)  # 5 días = 120 horas
+    casos_fuera_sla = total - casos_dentro_sla
+
+    # Agrupar según el parámetro
+    datos = []
+    if agrupar_por == "motivo":
+        resultados = db.query(
+            MotivoPQR.nombre.label('categoria'),
+            func.count(Caso.id).label('casos_cerrados'),
+            func.avg(Caso.tiempo_resolucion_horas).label('tiempo_promedio'),
+            func.min(Caso.tiempo_resolucion_horas).label('tiempo_minimo'),
+            func.max(Caso.tiempo_resolucion_horas).label('tiempo_maximo')
+        ).join(Caso).filter(
+            Caso.estado == EstadoCasoEnum.CERRADO,
+            Caso.fecha_cierre >= fecha_inicio,
+            Caso.fecha_cierre <= fecha_fin,
+            Caso.tiempo_resolucion_horas.isnot(None)
+        ).group_by(MotivoPQR.nombre).all()
+
+        datos = [{
+            "categoria": r.categoria,
+            "casos_cerrados": r.casos_cerrados,
+            "tiempo_promedio_horas": round(r.tiempo_promedio, 2),
+            "tiempo_minimo_horas": round(r.tiempo_minimo, 2),
+            "tiempo_maximo_horas": round(r.tiempo_maximo, 2)
+        } for r in resultados]
+
+    elif agrupar_por == "prioridad":
+        resultados = db.query(
+            Caso.prioridad.label('categoria'),
+            func.count(Caso.id).label('casos_cerrados'),
+            func.avg(Caso.tiempo_resolucion_horas).label('tiempo_promedio'),
+            func.min(Caso.tiempo_resolucion_horas).label('tiempo_minimo'),
+            func.max(Caso.tiempo_resolucion_horas).label('tiempo_maximo')
+        ).filter(
+            Caso.estado == EstadoCasoEnum.CERRADO,
+            Caso.fecha_cierre >= fecha_inicio,
+            Caso.fecha_cierre <= fecha_fin,
+            Caso.tiempo_resolucion_horas.isnot(None)
+        ).group_by(Caso.prioridad).all()
+
+        datos = [{
+            "categoria": r.categoria.value,
+            "casos_cerrados": r.casos_cerrados,
+            "tiempo_promedio_horas": round(r.tiempo_promedio, 2),
+            "tiempo_minimo_horas": round(r.tiempo_minimo, 2),
+            "tiempo_maximo_horas": round(r.tiempo_maximo, 2)
+        } for r in resultados]
+
+    return {
+        "periodo": {"inicio": inicio, "fin": fin},
+        "agrupacion": agrupar_por,
+        "datos": datos,
+        "promedio_general": round(promedio_general, 2),
+        "casos_dentro_sla": casos_dentro_sla,
+        "casos_fuera_sla": casos_fuera_sla,
+        "porcentaje_cumplimiento_sla": round(casos_dentro_sla / total * 100, 2)
+    }
+
+@api_router.get("/metricas/tendencia-historica")
+async def obtener_tendencia_historica(
+    inicio: str,
+    fin: str,
+    agrupar_por: str = "dia",  # dia, semana, mes
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    fecha_inicio = datetime.fromisoformat(inicio)
+    fecha_fin = datetime.fromisoformat(fin)
+
+    if agrupar_por == "dia":
+        resultados = db.query(
+            func.date(Caso.fecha_creacion).label('periodo'),
+            func.count(Caso.id).label('casos_abiertos'),
+            func.count(case((Caso.estado == EstadoCasoEnum.CERRADO, 1))).label('casos_cerrados')
+        ).filter(
+            Caso.fecha_creacion >= fecha_inicio,
+            Caso.fecha_creacion <= fecha_fin
+        ).group_by(func.date(Caso.fecha_creacion)).order_by('periodo').all()
+
+        datos = [{
+            "periodo": str(r.periodo),
+            "casos_abiertos": r.casos_abiertos,
+            "casos_cerrados": r.casos_cerrados,
+            "casos_pendientes": r.casos_abiertos - r.casos_cerrados
+        } for r in resultados]
+
+    return {
+        "periodo": {"inicio": inicio, "fin": fin},
+        "agrupacion": agrupar_por,
+        "datos": datos
+    }
+
+# ==================== REPORTES ====================
+
+from reportes_service import ReportesService
+from fastapi.responses import StreamingResponse
+
+@api_router.post("/reportes/generar")
+async def generar_reporte(
+    tipo_reporte: str,
+    formato: str,  # pdf o excel
+    fecha_inicio: str,
+    fecha_fin: str,
+    current_user: Usuario = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Genera reportes en PDF o Excel"""
+
+    if tipo_reporte == "desempeno_agentes":
+        # Obtener datos
+        fecha_ini = datetime.fromisoformat(fecha_inicio)
+        fecha_f = datetime.fromisoformat(fecha_fin)
+
+        resultados = db.query(
+            Usuario.nombre_completo,
+            func.count(case((Caso.estado == EstadoCasoEnum.ABIERTO, 1))).label('abiertos'),
+            func.count(case((Caso.estado == EstadoCasoEnum.CERRADO, 1))).label('cerrados'),
+            func.avg(Caso.tiempo_resolucion_horas).label('promedio_horas')
+        ).join(Caso, Usuario.id == Caso.agente_asignado_id).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f
+        ).group_by(Usuario.nombre_completo).all()
+
+        datos = {
+            "agentes": [{
+                "agente": r.nombre_completo,
+                "abiertos": r.abiertos,
+                "cerrados": r.cerrados,
+                "promedio_horas": round(r.promedio_horas, 2) if r.promedio_horas else 0
+            } for r in resultados]
+        }
+
+        # Generar reporte
+        if formato == "pdf":
+            buffer = ReportesService.generar_pdf_desempeno_agentes(datos, fecha_inicio, fecha_fin)
+            filename = f"reporte_desempeno_agentes_{fecha_inicio}_{fecha_fin}.pdf"
+            media_type = "application/pdf"
+        else:
+            buffer = ReportesService.generar_excel_desempeno_agentes(datos, fecha_inicio, fecha_fin)
+            filename = f"reporte_desempeno_agentes_{fecha_inicio}_{fecha_fin}.xlsx"
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+        return StreamingResponse(
+            buffer,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    elif tipo_reporte == "casos_periodo":
+        # Obtener datos
+        fecha_ini = datetime.fromisoformat(fecha_inicio)
+        fecha_f = datetime.fromisoformat(fecha_fin)
+
+        total_casos = db.query(Caso).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f
+        ).count()
+
+        abiertos = db.query(Caso).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f,
+            Caso.estado == EstadoCasoEnum.ABIERTO
+        ).count()
+
+        cerrados = db.query(Caso).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f,
+            Caso.estado == EstadoCasoEnum.CERRADO
+        ).count()
+
+        en_proceso = db.query(Caso).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f,
+            Caso.estado == EstadoCasoEnum.EN_PROCESO
+        ).count()
+
+        avg_tiempo = db.query(func.avg(Caso.tiempo_resolucion_horas)).filter(
+            Caso.fecha_creacion >= fecha_ini,
+            Caso.fecha_creacion <= fecha_f,
+            Caso.tiempo_resolucion_horas.isnot(None)
+        ).scalar()
+
+        datos = {
+            "total_casos": total_casos,
+            "abiertos": abiertos,
+            "cerrados": cerrados,
+            "en_proceso": en_proceso,
+            "tiempo_promedio": avg_tiempo or 0
+        }
+
+        # Generar reporte
+        if formato == "pdf":
+            buffer = ReportesService.generar_pdf_casos_periodo(datos, fecha_inicio, fecha_fin)
+            filename = f"reporte_casos_periodo_{fecha_inicio}_{fecha_fin}.pdf"
+            media_type = "application/pdf"
+        else:
+            # Por ahora solo PDF, puedes agregar Excel después
+            raise HTTPException(status_code=400, detail="Formato no soportado para este reporte")
+
+        return StreamingResponse(
+            buffer,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    else:
+        raise HTTPException(status_code=400, detail="Tipo de reporte no soportado")
+
 # ==================== MOTIVOS ====================
 
 @api_router.get("/motivos", response_model=List[schemas.MotivoPQR])
