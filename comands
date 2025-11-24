@@ -1,0 +1,4 @@
+docker exec -it logifarma_backend_dev python init_db.py
+
+
+docker exec -it logifarma_db_dev psql -U postgres -d logifarma_pqr

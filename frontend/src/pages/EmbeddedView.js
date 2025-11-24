@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import { toast } from 'sonner';
 import { Search, Save, FileText, History, X, Plus, CheckCircle } from 'lucide-react';
 import { formatDateShort } from '../lib/utils';
+import { useSearchParams } from "react-router-dom";
 
 // Función para formatear fecha y hora completa
 const formatearFechaHora = (fechaISO) => {
@@ -61,6 +62,8 @@ const EmbeddedView = () => {
   // Modal de confirmación
   const [showModal, setShowModal] = useState(false);
   const [numeroRadicacion, setNumeroRadicacion] = useState('');
+
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     loadMotivos();
@@ -316,6 +319,22 @@ const EmbeddedView = () => {
 
     setLoading(true);
 
+    const omnileadsFromUrl = {
+      call_id: searchParams.get("call_id"),
+      campaign_id: searchParams.get("campaign_id"),
+      campaign_name: searchParams.get("campaign_name"),
+      campaign_type: searchParams.get("campaign_type"),
+      agent_id: searchParams.get("agent_id"),
+      agent_username: searchParams.get("agent_username"),
+      agent_name: searchParams.get("agent_name"),
+      telefono: searchParams.get("telefono"),
+      datetime: searchParams.get("datetime"),
+      rec_filename: searchParams.get("rec_filename"),
+    };
+
+    console.log(omnileadsFromUrl)
+
+
     try {
       const casoData = {
         paciente: {
@@ -333,18 +352,7 @@ const EmbeddedView = () => {
         estado,
         descripcion,
         numero_caso_existente: casoExistente?.numero_caso,
-        omnileads: {
-          call_id: 'SIM-' + Date.now(),
-          campaign_id: 'embedded',
-          campaign_name: 'Vista Embebida',
-          campaign_type: 'manual',
-          agent_id: '1',
-          agent_username: 'embedded',
-          agent_name: 'Usuario Embebido',
-          telefono: celular,
-          datetime: new Date().toISOString(),
-          rec_filename: null,
-        },
+        omnileads: omnileadsFromUrl
       };
 
       const response = await casosAPI.createEmbedded(casoData);
