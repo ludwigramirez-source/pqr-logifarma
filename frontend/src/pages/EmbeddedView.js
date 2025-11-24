@@ -211,7 +211,7 @@ const EmbeddedView = () => {
 
   const guardarCaso = async () => {
     if (!identificacion || !nombre || !apellidos || !celular || !direccion || !departamento || !ciudad) {
-      toast.error('Complete todos los datos del paciente');
+      toast.error('Complete todos los datos del paciente .....');
       return;
     }
 
@@ -253,6 +253,7 @@ const EmbeddedView = () => {
       };
 
       await casosAPI.createEmbedded(casoData);
+      console.log(casoData)
       toast.success(casoExistente ? 'Caso actualizado exitosamente' : 'Caso creado exitosamente');
       limpiarFormulario();
     } catch (error) {
