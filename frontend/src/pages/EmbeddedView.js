@@ -11,12 +11,16 @@ import { toast } from 'sonner';
 import { Search, Save, FileText, History, X, Plus } from 'lucide-react';
 import { formatDateShort } from '../lib/utils';
 
+// params get
+import { useSearchParams } from "react-router-dom";
+
+
 const EmbeddedView = () => {
   const [activeTab, setActiveTab] = useState('gestion');
   const [motivos, setMotivos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [ciudades, setCiudades] = useState([]);
-  
+
   // Datos del paciente
   const [identificacion, setIdentificacion] = useState('');
   const [paciente, setPaciente] = useState(null);
@@ -26,7 +30,7 @@ const EmbeddedView = () => {
   const [direccion, setDireccion] = useState('');
   const [departamento, setDepartamento] = useState('');
   const [ciudad, setCiudad] = useState('');
-  
+
   // Datos del caso
   const [numeroCasoBuscar, setNumeroCasoBuscar] = useState('');
   const [casoExistente, setCasoExistente] = useState(null);
@@ -34,11 +38,14 @@ const EmbeddedView = () => {
   const [prioridad, setPrioridad] = useState('MEDIA');
   const [estado, setEstado] = useState('ABIERTO');
   const [descripcion, setDescripcion] = useState('');
-  
+
   // Historial
   const [casosPaciente, setCasosPaciente] = useState([]);
-  
+
   const [loading, setLoading] = useState(false);
+
+
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     loadMotivos();
@@ -98,18 +105,18 @@ const EmbeddedView = () => {
         setDireccion(p.direccion);
         setDepartamento(p.departamento);
         setCiudad(p.ciudad);
-        
+
         // Buscar casos abiertos o en proceso del paciente
-        const casosResponse = await casosAPI.getAll({ 
+        const casosResponse = await casosAPI.getAll({
           paciente_identificacion: identificacion,
-          limit: 100 
+          limit: 100
         });
-        
+
         // Filtrar solo casos ABIERTOS o EN_PROCESO
         const casosPendientes = casosResponse.data.filter(
           c => c.estado === 'ABIERTO' || c.estado === 'EN_PROCESO'
         );
-        
+
         if (casosPendientes.length > 0) {
           setCasosPaciente(casosPendientes);
           toast.success(`Paciente encontrado con ${casosPendientes.length} caso(s) pendiente(s)`);
@@ -166,7 +173,7 @@ const EmbeddedView = () => {
     setMotivoId(caso.motivo_id.toString());
     setDescripcion(caso.descripcion);
     toast.success(`Caso ${caso.numero_caso} seleccionado para seguimiento`);
-    
+
     // Scroll al formulario del caso
     setTimeout(() => {
       const casoSection = document.getElementById('caso-section');
@@ -184,7 +191,7 @@ const EmbeddedView = () => {
     setMotivoId('');
     setDescripcion('');
     toast.info('Formulario preparado para crear un nuevo caso');
-    
+
     // Scroll al formulario del caso
     setTimeout(() => {
       const casoSection = document.getElementById('caso-section');
@@ -222,6 +229,22 @@ const EmbeddedView = () => {
 
     setLoading(true);
 
+    const omnileadsFromUrl = {
+      call_id: searchParams.get("call_id"),
+      campaign_id: searchParams.get("campaign_id"),
+      campaign_name: searchParams.get("campaign_name"),
+      campaign_type: searchParams.get("campaign_type"),
+      agent_id: searchParams.get("agent_id"),
+      agent_username: searchParams.get("agent_username"),
+      agent_name: searchParams.get("agent_name"),
+      telefono: searchParams.get("telefono"),
+      datetime: searchParams.get("datetime"),
+      rec_filename: searchParams.get("rec_filename"),
+    };
+
+    console.log(omnileadsFromUrl)
+
+
     try {
       const casoData = {
         paciente: {
@@ -238,22 +261,22 @@ const EmbeddedView = () => {
         estado,
         descripcion,
         numero_caso_existente: casoExistente?.numero_caso,
-        omnileads: {
-          call_id: 'SIM-' + Date.now(),
-          campaign_id: 'embedded',
-          campaign_name: 'Vista Embebida',
-          campaign_type: 'manual',
-          agent_id: '1',
-          agent_username: 'embedded',
-          agent_name: 'Usuario Embebido',
-          telefono: celular,
-          datetime: new Date().toISOString(),
-          rec_filename: null,
-        },
+        omnileads:  omnileadsFromUrl
+        // {
+        //   call_id: 'SIM-' + Date.now(),
+        //   campaign_id: 'embedded',
+        //   campaign_name: 'Vista Embebida',
+        //   campaign_type: 'manual',
+        //   agent_id: '1',
+        //   agent_username: 'embedded',
+        //   agent_name: 'Usuario Embebido',
+        //   telefono: celular,
+        //   datetime: new Date().toISOString(),
+        //   rec_filename: null,
+        // },
       };
 
       await casosAPI.createEmbedded(casoData);
-      console.log(casoData)
       toast.success(casoExistente ? 'Caso actualizado exitosamente' : 'Caso creado exitosamente');
       limpiarFormulario();
     } catch (error) {
@@ -355,7 +378,7 @@ const EmbeddedView = () => {
                               Este paciente tiene {casosPaciente.length} caso(s) abierto(s) o en proceso
                             </p>
                           </div>
-                          <Button 
+                          <Button
                             onClick={crearNuevoCaso}
                             variant="outline"
                             size="sm"
@@ -366,7 +389,7 @@ const EmbeddedView = () => {
                             Crear Caso Nuevo
                           </Button>
                         </div>
-                        
+
                         <div className="space-y-2">
                           {casosPaciente.map((caso) => (
                             <div
@@ -401,10 +424,10 @@ const EmbeddedView = () => {
                             </div>
                           ))}
                         </div>
-                        
+
                         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-xs text-blue-900">
-                            <strong>💡 Tip:</strong> Si la llamada es sobre uno de estos casos, haz clic en "Dar Seguimiento". 
+                            <strong>💡 Tip:</strong> Si la llamada es sobre uno de estos casos, haz clic en "Dar Seguimiento".
                             Si es un nuevo problema, haz clic en "Crear Caso Nuevo".
                           </p>
                         </div>
@@ -494,7 +517,7 @@ const EmbeddedView = () => {
               {/* Información del Caso */}
               <div id="caso-section" className="space-y-4 p-4 border-2 rounded-lg bg-white">
                 <h3 className="text-lg font-semibold">Información del Caso</h3>
-                
+
                 <div className="flex gap-2 mb-4">
                   <div className="flex-1">
                     <Label>Buscar Caso Existente</Label>
