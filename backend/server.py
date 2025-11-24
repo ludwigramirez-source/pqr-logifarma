@@ -11,8 +11,8 @@ import logging
 
 from database import get_db, engine, Base
 from models import (
-    Usuario, Paciente, Caso, MotivoPQR, Interaccion, HistorialEstado,
-    Alerta, Departamento, Ciudad, EstadoCasoEnum, PrioridadEnum, TipoAlertaEnum
+    Usuario, Paciente, Caso, MotivoPQR, Interaccion, HistorialEstado, HistorialEvento,
+    Alerta, Departamento, Ciudad, EstadoCasoEnum, PrioridadEnum, TipoAlertaEnum, RolEnum
 )
 import schemas
 from auth import (
@@ -70,22 +70,135 @@ async def get_current_user_info(current_user: Usuario = Depends(get_current_user
 # ==================== VISTA EMBEBIDA (SIN AUTENTICACIÓN) ====================
 
 def generar_numero_caso(db: Session) -> str:
-    """Genera un número de caso único con formato PQR-YYYYMMDD-####"""
-    hoy = datetime.now(timezone.utc).strftime("%Y%m%d")
-    prefix = f"PQR-{hoy}-"
-    
-    # Buscar el último caso del día
+    """Genera un número de caso único con formato RAD-XXXX (autoincremental)"""
+    prefix = "RAD-"
+
+    # Buscar el último caso creado (sin importar la fecha)
     ultimo_caso = db.query(Caso).filter(
         Caso.numero_caso.like(f"{prefix}%")
-    ).order_by(Caso.numero_caso.desc()).first()
-    
+    ).order_by(Caso.id.desc()).first()
+
     if ultimo_caso:
+        # Extraer el número del último caso (RAD-1234 -> 1234)
         ultimo_num = int(ultimo_caso.numero_caso.split('-')[-1])
         nuevo_num = ultimo_num + 1
     else:
         nuevo_num = 1
-    
-    return f"{prefix}{nuevo_num:04d}"
+
+    return f"{prefix}{nuevo_num}"
+
+def registrar_evento(
+    db: Session,
+    caso_id: int,
+    usuario_id: Optional[int],
+    tipo_evento: str,
+    campo_modificado: Optional[str] = None,
+    valor_anterior: Optional[str] = None,
+    valor_nuevo: Optional[str] = None,
+    comentario: Optional[str] = None,
+    datos_adicionales: Optional[str] = None
+):
+    """
+    Registra un evento en el historial unificado del caso
+
+    Tipos de evento:
+    - creacion: Caso creado
+    - cambio_estado: Cambio de estado
+    - cambio_prioridad: Cambio de prioridad
+    - asignacion: Asignación/reasignación de agente
+    - interaccion: Nueva interacción/llamada
+    - edicion_descripcion: Cambio en descripción
+    - edicion_paciente: Cambio en datos del paciente
+    """
+    evento = HistorialEvento(
+        caso_id=caso_id,
+        usuario_id=usuario_id,
+        tipo_evento=tipo_evento,
+        campo_modificado=campo_modificado,
+        valor_anterior=valor_anterior,
+        valor_nuevo=valor_nuevo,
+        comentario=comentario,
+        datos_adicionales=datos_adicionales
+    )
+    db.add(evento)
+    return evento
+
+@api_router.get("/embedded/paciente/{identificacion}")
+async def buscar_paciente_embebido(
+    identificacion: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint para buscar paciente sin autenticación (vista embebida)
+    """
+    paciente = db.query(Paciente).filter(Paciente.identificacion == identificacion).first()
+    if not paciente:
+        return {"found": False, "paciente": None, "casos": []}
+
+    # Buscar casos pendientes (ABIERTO o EN_PROCESO)
+    casos = db.query(Caso).filter(
+        Caso.paciente_id == paciente.id,
+        Caso.estado.in_([EstadoCasoEnum.ABIERTO, EstadoCasoEnum.EN_PROCESO])
+    ).all()
+
+    return {
+        "found": True,
+        "paciente": {
+            "id": paciente.id,
+            "identificacion": paciente.identificacion,
+            "nombre": paciente.nombre,
+            "apellidos": paciente.apellidos,
+            "celular": paciente.celular,
+            "email": paciente.email,
+            "direccion": paciente.direccion,
+            "departamento": paciente.departamento,
+            "ciudad": paciente.ciudad
+        },
+        "casos": [
+            {
+                "id": caso.id,
+                "numero_caso": caso.numero_caso,
+                "estado": caso.estado.value,
+                "prioridad": caso.prioridad.value,
+                "motivo_id": caso.motivo_id,
+                "motivo_nombre": caso.motivo_obj.nombre if caso.motivo_obj else "Sin motivo",
+                "descripcion": caso.descripcion,
+                "fecha_creacion": caso.fecha_creacion.isoformat()
+            }
+            for caso in casos
+        ]
+    }
+
+@api_router.get("/embedded/paciente/{identificacion}/historial")
+async def obtener_historial_paciente_embebido(
+    identificacion: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint para obtener historial completo de casos sin autenticación (vista embebida)
+    """
+    paciente = db.query(Paciente).filter(Paciente.identificacion == identificacion).first()
+    if not paciente:
+        return []
+
+    # Buscar todos los casos del paciente
+    casos = db.query(Caso).filter(
+        Caso.paciente_id == paciente.id
+    ).order_by(Caso.fecha_creacion.desc()).all()
+
+    return [
+        {
+            "id": caso.id,
+            "numero_caso": caso.numero_caso,
+            "estado": caso.estado.value,
+            "prioridad": caso.prioridad.value,
+            "motivo_id": caso.motivo_id,
+            "motivo_nombre": caso.motivo_obj.nombre if caso.motivo_obj else "Sin motivo",
+            "descripcion": caso.descripcion,
+            "fecha_creacion": caso.fecha_creacion.isoformat()
+        }
+        for caso in casos
+    ]
 
 @api_router.post("/embedded/caso", response_model=schemas.Caso)
 async def crear_caso_embebido(
@@ -109,6 +222,7 @@ async def crear_caso_embebido(
                 nombre=paciente_data.get('nombre'),
                 apellidos=paciente_data.get('apellidos'),
                 celular=paciente_data.get('celular'),
+                email=paciente_data.get('email'),
                 direccion=paciente_data.get('direccion'),
                 departamento=paciente_data.get('departamento'),
                 ciudad=paciente_data.get('ciudad')
@@ -116,6 +230,11 @@ async def crear_caso_embebido(
             db.add(paciente)
             db.flush()
         
+        # Buscar agente por defecto (el primero disponible) para uso posterior
+        agente = db.query(Usuario).filter(Usuario.rol == "agente", Usuario.activo == True).first()
+        if not agente:
+            agente = db.query(Usuario).filter(Usuario.activo == True).first()
+
         # Si es un caso existente, actualizarlo
         numero_caso_buscar = caso_data.get('numero_caso_existente')
         if numero_caso_buscar:
@@ -128,10 +247,6 @@ async def crear_caso_embebido(
                 raise HTTPException(status_code=404, detail="Caso no encontrado")
         else:
             # Crear nuevo caso
-            # Buscar agente por defecto (el primero disponible)
-            agente = db.query(Usuario).filter(Usuario.rol == "agente", Usuario.activo == True).first()
-            if not agente:
-                agente = db.query(Usuario).filter(Usuario.activo == True).first()
             
             numero_caso = generar_numero_caso(db)
             
@@ -143,12 +258,25 @@ async def crear_caso_embebido(
                 estado=EstadoCasoEnum[caso_data.get('estado', 'ABIERTO')],
                 descripcion=caso_data.get('descripcion'),
                 agente_creador_id=agente.id if agente else 1,
-                agente_asignado_id=agente.id if agente else None
+                agente_asignado_id=agente.id if agente else None,
+                origen='call'  # Los casos desde embedded view son de call center
             )
             db.add(caso)
             db.flush()
-            
-            # Registrar en historial
+
+            # Registrar evento de creación
+            registrar_evento(
+                db=db,
+                caso_id=caso.id,
+                usuario_id=agente.id if agente else None,
+                tipo_evento='creacion',
+                campo_modificado=None,
+                valor_anterior=None,
+                valor_nuevo=f"Caso {caso.numero_caso} creado",
+                comentario="Caso creado desde call center (OmniLeads)"
+            )
+
+            # Registrar en historial (compatibilidad)
             historial = HistorialEstado(
                 caso_id=caso.id,
                 estado_anterior=None,
@@ -175,7 +303,27 @@ async def crear_caso_embebido(
             observaciones=caso_data.get('descripcion')
         )
         db.add(interaccion)
-        
+        db.flush()
+
+        # Registrar evento de interacción
+        import json
+        datos_omnileads = json.dumps({
+            "agent_name": omnileads_data.get('agent_name'),
+            "campaign_name": omnileads_data.get('campaign_name'),
+            "telefono": omnileads_data.get('telefono')
+        })
+        registrar_evento(
+            db=db,
+            caso_id=caso.id,
+            usuario_id=agente.id if agente else None,
+            tipo_evento='interaccion',
+            campo_modificado='llamada',
+            valor_anterior=None,
+            valor_nuevo=f"Llamada {omnileads_data.get('agent_name', 'Agente')}",
+            comentario=caso_data.get('descripcion'),
+            datos_adicionales=datos_omnileads
+        )
+
         # Crear alerta si es prioridad alta
         if caso.prioridad == PrioridadEnum.ALTA:
             alerta = Alerta(
@@ -270,13 +418,19 @@ async def listar_casos(
     agente_id: Optional[int] = None,
     fecha_desde: Optional[str] = None,
     fecha_hasta: Optional[str] = None,
+    origen: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Caso).options(joinedload(Caso.paciente))
-    
+    query = db.query(Caso).options(joinedload(Caso.paciente), joinedload(Caso.motivo_obj))
+
+    # PERMISOS POR ROL: Agentes solo ven casos asignados a ellos
+    if current_user.rol == RolEnum.AGENTE:
+        query = query.filter(Caso.agente_asignado_id == current_user.id)
+    # Administradores ven todos los casos
+
     if numero_caso:
         query = query.filter(Caso.numero_caso.ilike(f"%{numero_caso}%"))
     if estado:
@@ -293,7 +447,9 @@ async def listar_casos(
         query = query.filter(Caso.fecha_creacion >= datetime.fromisoformat(fecha_desde))
     if fecha_hasta:
         query = query.filter(Caso.fecha_creacion <= datetime.fromisoformat(fecha_hasta))
-    
+    if origen:
+        query = query.filter(Caso.origen == origen)
+
     casos = query.order_by(Caso.fecha_creacion.desc()).offset(skip).limit(limit).all()
     return casos
 
@@ -309,11 +465,17 @@ async def obtener_caso(
         joinedload(Caso.agente_creador),
         joinedload(Caso.agente_asignado),
         joinedload(Caso.interacciones),
-        joinedload(Caso.historial_estados)
+        joinedload(Caso.historial_estados),
+        joinedload(Caso.historial_eventos_new).joinedload(HistorialEvento.usuario)
     ).filter(Caso.id == caso_id).first()
     
     if not caso:
         raise HTTPException(status_code=404, detail="Caso no encontrado")
+
+    # PERMISOS: Agentes solo pueden ver casos asignados a ellos
+    if current_user.rol == RolEnum.AGENTE and caso.agente_asignado_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tiene permisos para ver este caso")
+
     return caso
 
 @api_router.post("/casos", response_model=schemas.Caso)
@@ -331,8 +493,20 @@ async def crear_caso(
     )
     db.add(db_caso)
     db.flush()
-    
-    # Registrar en historial
+
+    # Registrar evento de creación
+    registrar_evento(
+        db=db,
+        caso_id=db_caso.id,
+        usuario_id=current_user.id,
+        tipo_evento='creacion',
+        campo_modificado=None,
+        valor_anterior=None,
+        valor_nuevo=f"Caso {db_caso.numero_caso} creado",
+        comentario="Caso creado desde web"
+    )
+
+    # Registrar en historial (compatibilidad)
     historial = HistorialEstado(
         caso_id=db_caso.id,
         estado_anterior=None,
@@ -365,37 +539,110 @@ async def actualizar_caso(
     caso = db.query(Caso).filter(Caso.id == caso_id).first()
     if not caso:
         raise HTTPException(status_code=404, detail="Caso no encontrado")
-    
+
+    # PERMISOS: Solo administradores o el agente asignado pueden actualizar
+    if current_user.rol == RolEnum.AGENTE and caso.agente_asignado_id != current_user.id:
+        raise HTTPException(status_code=403, detail="No tiene permisos para modificar este caso")
+
+    # Guardar valores anteriores
     estado_anterior = caso.estado.value if caso.estado else None
+    prioridad_anterior = caso.prioridad.value if caso.prioridad else None
+    agente_anterior_id = caso.agente_asignado_id
+    descripcion_anterior = caso.descripcion
+
     comentario = caso_update.pop('comentario', None)
-    
-    # Actualizar campos
+
+    # Actualizar campos y registrar eventos
     for key, value in caso_update.items():
         if key in ['estado', 'prioridad', 'agente_asignado_id', 'descripcion']:
             if key == 'estado':
-                setattr(caso, key, EstadoCasoEnum[value] if isinstance(value, str) else value)
+                nuevo_valor = EstadoCasoEnum[value] if isinstance(value, str) else value
+                if caso.estado != nuevo_valor:
+                    # Registrar evento de cambio de estado
+                    registrar_evento(
+                        db=db,
+                        caso_id=caso.id,
+                        usuario_id=current_user.id,
+                        tipo_evento='cambio_estado',
+                        campo_modificado='estado',
+                        valor_anterior=estado_anterior,
+                        valor_nuevo=nuevo_valor.value,
+                        comentario=comentario
+                    )
+                    # Mantener compatibilidad con tabla antigua
+                    historial = HistorialEstado(
+                        caso_id=caso.id,
+                        estado_anterior=estado_anterior,
+                        estado_nuevo=nuevo_valor.value,
+                        usuario_id=current_user.id,
+                        comentario=comentario
+                    )
+                    db.add(historial)
+                setattr(caso, key, nuevo_valor)
+
             elif key == 'prioridad':
-                setattr(caso, key, PrioridadEnum[value] if isinstance(value, str) else value)
-            else:
+                nuevo_valor = PrioridadEnum[value] if isinstance(value, str) else value
+                if caso.prioridad != nuevo_valor:
+                    # Registrar evento de cambio de prioridad
+                    registrar_evento(
+                        db=db,
+                        caso_id=caso.id,
+                        usuario_id=current_user.id,
+                        tipo_evento='cambio_prioridad',
+                        campo_modificado='prioridad',
+                        valor_anterior=prioridad_anterior,
+                        valor_nuevo=nuevo_valor.value,
+                        comentario=comentario
+                    )
+                setattr(caso, key, nuevo_valor)
+
+            elif key == 'agente_asignado_id':
+                if agente_anterior_id != value:
+                    # Registrar evento de asignación
+                    agente_anterior_nombre = ""
+                    agente_nuevo_nombre = ""
+                    if agente_anterior_id:
+                        agente_ant = db.query(Usuario).filter(Usuario.id == agente_anterior_id).first()
+                        if agente_ant:
+                            agente_anterior_nombre = agente_ant.nombre_completo
+                    if value:
+                        agente_nuevo = db.query(Usuario).filter(Usuario.id == value).first()
+                        if agente_nuevo:
+                            agente_nuevo_nombre = agente_nuevo.nombre_completo
+
+                    registrar_evento(
+                        db=db,
+                        caso_id=caso.id,
+                        usuario_id=current_user.id,
+                        tipo_evento='asignacion',
+                        campo_modificado='agente_asignado',
+                        valor_anterior=agente_anterior_nombre or "Sin asignar",
+                        valor_nuevo=agente_nuevo_nombre or "Sin asignar",
+                        comentario=comentario
+                    )
                 setattr(caso, key, value)
-    
+
+            elif key == 'descripcion':
+                if descripcion_anterior != value:
+                    # Registrar evento de edición de descripción
+                    registrar_evento(
+                        db=db,
+                        caso_id=caso.id,
+                        usuario_id=current_user.id,
+                        tipo_evento='edicion_descripcion',
+                        campo_modificado='descripcion',
+                        valor_anterior=descripcion_anterior[:100] + "..." if len(descripcion_anterior) > 100 else descripcion_anterior,
+                        valor_nuevo=value[:100] + "..." if len(value) > 100 else value,
+                        comentario=comentario
+                    )
+                setattr(caso, key, value)
+
     # Si se cierra el caso, calcular tiempo de resolución
     if caso.estado == EstadoCasoEnum.CERRADO and not caso.fecha_cierre:
         caso.fecha_cierre = datetime.now(timezone.utc)
         diff = caso.fecha_cierre - caso.fecha_creacion
         caso.tiempo_resolucion_horas = diff.total_seconds() / 3600
-    
-    # Registrar cambio de estado en historial si cambió
-    if estado_anterior != caso.estado.value:
-        historial = HistorialEstado(
-            caso_id=caso.id,
-            estado_anterior=estado_anterior,
-            estado_nuevo=caso.estado.value,
-            usuario_id=current_user.id,
-            comentario=comentario
-        )
-        db.add(historial)
-    
+
     db.commit()
     db.refresh(caso)
     return caso
@@ -964,10 +1211,14 @@ async def listar_ciudades(
 app.include_router(api_router)
 
 # Middleware CORS
+cors_origins_str = os.environ.get('CORS_ORIGINS', '*')
+cors_origins = [origin.strip() for origin in cors_origins_str.split(',')]
+logger.info(f"Configurando CORS con orígenes: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

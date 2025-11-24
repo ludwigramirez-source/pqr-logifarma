@@ -36,10 +36,10 @@ services:
       JWT_ALGORITHM: HS256
       JWT_EXPIRATION_HOURS: 8
 
-      # CORS - Permitir frontend
-      CORS_ORIGINS: http://localhost,http://localhost:3002,http://frontend
+      # CORS - Permitir frontend (HTTP y HTTPS)
+      CORS_ORIGINS: http://localhost,http://localhost:3002,http://localhost:3003,https://localhost,https://localhost:3002,https://localhost:3003,https://localhost:8001,http://frontend
     ports:
-      - "8001:8000"
+      - "8001:8443"
     depends_on:
       db:
         condition: service_healthy
@@ -49,7 +49,7 @@ services:
       - ./backend:/app
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,12 +60,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_BACKEND_URL: http://localhost:8001
+        REACT_APP_BACKEND_URL: https://localhost:8001
     container_name: logifarma_frontend
     environment:
-      REACT_APP_BACKEND_URL: http://localhost:8001
+      REACT_APP_BACKEND_URL: https://localhost:8001
     ports:
       - "3002:80"
+      - "3003:443"
     depends_on:
       - backend
     networks:

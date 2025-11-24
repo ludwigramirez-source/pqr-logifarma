@@ -21,6 +21,7 @@ const Casos = () => {
   const [cedulaPaciente, setCedulaPaciente] = useState('');
   const [estado, setEstado] = useState('');
   const [prioridad, setPrioridad] = useState('');
+  const [origen, setOrigen] = useState('');
 
   useEffect(() => {
     loadData();
@@ -49,7 +50,8 @@ const Casos = () => {
       if (cedulaPaciente) params.paciente_identificacion = cedulaPaciente;
       if (estado) params.estado = estado;
       if (prioridad) params.prioridad = prioridad;
-      
+      if (origen) params.origen = origen;
+
       const response = await casosAPI.getAll(params);
       setCasos(response.data);
     } catch (error) {
@@ -64,6 +66,7 @@ const Casos = () => {
     setCedulaPaciente('');
     setEstado('');
     setPrioridad('');
+    setOrigen('');
     loadData();
   };
 
@@ -72,12 +75,12 @@ const Casos = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
-            Gestión de Casos
+            Gestión de Radicados
           </h1>
-          <p className="text-muted-foreground">Listado y gestión de todos los casos PQR</p>
+          <p className="text-muted-foreground">Listado y gestión de radicaciones</p>
         </div>
-        <Button 
-          onClick={() => navigate('/casos/crear')} 
+        <Button
+          onClick={() => navigate('/casos/crear')}
           size="lg"
           data-testid="btn-crear-caso-nuevo"
           className="bg-green-600 hover:bg-green-700"
@@ -96,7 +99,7 @@ const Casos = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               placeholder="Número de caso"
               value={numeroCaso}
@@ -129,6 +132,15 @@ const Casos = () => {
                 <SelectItem value="ALTA">Alta</SelectItem>
                 <SelectItem value="MEDIA">Media</SelectItem>
                 <SelectItem value="BAJA">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={origen} onValueChange={setOrigen}>
+              <SelectTrigger data-testid="filter-origen">
+                <SelectValue placeholder="Origen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="call">Call Center</SelectItem>
+                <SelectItem value="web">Web</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2">
@@ -164,6 +176,8 @@ const Casos = () => {
                   <TableHead>Número Caso</TableHead>
                   <TableHead>Cédula Paciente</TableHead>
                   <TableHead>Paciente</TableHead>
+                  <TableHead>Motivo</TableHead>
+                  <TableHead>Origen</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Prioridad</TableHead>
                   <TableHead>Estado</TableHead>
@@ -173,7 +187,7 @@ const Casos = () => {
               <TableBody>
                 {casos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       No se encontraron casos
                     </TableCell>
                   </TableRow>
@@ -183,6 +197,16 @@ const Casos = () => {
                       <TableCell className="font-medium">{caso.numero_caso}</TableCell>
                       <TableCell>{caso.paciente?.identificacion || '-'}</TableCell>
                       <TableCell>{caso.paciente ? `${caso.paciente.nombre} ${caso.paciente.apellidos}` : '-'}</TableCell>
+                      <TableCell>{caso.motivo_obj?.nombre || '-'}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          caso.origen === 'call'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {caso.origen === 'call' ? 'Call Center' : 'Web'}
+                        </span>
+                      </TableCell>
                       <TableCell>{formatDate(caso.fecha_creacion)}</TableCell>
                       <TableCell>
                         <span className={`priority-badge-${caso.prioridad}`}>

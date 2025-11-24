@@ -18,9 +18,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar el código de la aplicación
 COPY . .
 
-# Exponer el puerto 8000
-EXPOSE 8000
+# Copiar certificados SSL
+COPY ssl/nginx-selfsigned.crt /app/ssl/nginx-selfsigned.crt
+COPY ssl/nginx-selfsigned.key /app/ssl/nginx-selfsigned.key
 
-# Comando para ejecutar la aplicación
-# Usamos uvicorn con host 0.0.0.0 para que sea accesible desde fuera del container
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+# Exponer puertos 8000 (HTTP) y 8443 (HTTPS)
+EXPOSE 8000 8443
+
+# Comando para ejecutar la aplicación con HTTPS
+# Usamos uvicorn con SSL para servir en HTTPS
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8443", "--ssl-keyfile", "/app/ssl/nginx-selfsigned.key", "--ssl-certfile", "/app/ssl/nginx-selfsigned.crt"]

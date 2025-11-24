@@ -127,6 +127,15 @@
             </div>
         </a>
         <script>
+            // Ocultar badge de IPTEGRA en vista embebida
+            if (window.location.pathname.includes('/embedded')) {
+                const badge = document.getElementById('iptegra-badge');
+                if (badge) {
+                    badge.style.display = 'none';
+                }
+            }
+        </script>
+        <script>
             !(function (t, e) {
                 var o, n, p, r;
                 e.__SV ||

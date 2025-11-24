@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from typing import Optional, List
 from datetime import datetime
 from models import RolEnum, EstadoCasoEnum, PrioridadEnum, TipoAlertaEnum
@@ -38,6 +38,7 @@ class PacienteBase(BaseModel):
     nombre: str
     apellidos: str
     celular: str
+    email: Optional[str] = None
     direccion: str
     departamento: str
     ciudad: str
@@ -49,6 +50,7 @@ class PacienteUpdate(BaseModel):
     nombre: Optional[str] = None
     apellidos: Optional[str] = None
     celular: Optional[str] = None
+    email: Optional[str] = None
     direccion: Optional[str] = None
     departamento: Optional[str] = None
     ciudad: Optional[str] = None
@@ -86,6 +88,7 @@ class CasoCreate(BaseModel):
     estado: EstadoCasoEnum = EstadoCasoEnum.ABIERTO
     descripcion: str
     agente_asignado_id: Optional[int] = None
+    origen: str = 'web'  # 'call' o 'web'
 
 class CasoUpdate(BaseModel):
     estado: Optional[EstadoCasoEnum] = None
@@ -137,7 +140,9 @@ class Caso(BaseModel):
     fecha_actualizacion: datetime
     fecha_cierre: Optional[datetime]
     tiempo_resolucion_horas: Optional[float]
+    origen: str
     paciente: Optional[Paciente] = None
+    motivo_obj: Optional[MotivoPQR] = None
 
 class CasoDetalle(Caso):
     paciente: Paciente
@@ -146,6 +151,7 @@ class CasoDetalle(Caso):
     agente_asignado: Optional[Usuario]
     interacciones: List[Interaccion]
     historial_estados: List[HistorialEstado]
+    historial_eventos_new: List['HistorialEvento'] = []
 
 class Alerta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -155,6 +161,29 @@ class Alerta(BaseModel):
     fecha_creacion: datetime
     leida: bool
     usuario_notificado_id: Optional[int]
+
+class HistorialEvento(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    caso_id: int
+    usuario_id: Optional[int]
+    tipo_evento: str
+    campo_modificado: Optional[str]
+    valor_anterior: Optional[str]
+    valor_nuevo: Optional[str]
+    comentario: Optional[str]
+    fecha_evento: datetime
+    datos_adicionales: Optional[str]
+    usuario: Optional[Usuario] = None
+
+    @field_validator('datos_adicionales', mode='before')
+    @classmethod
+    def convert_dict_to_json(cls, v):
+        """Convertir dict a JSON string si es necesario"""
+        if isinstance(v, dict):
+            import json
+            return json.dumps(v)
+        return v
 
 class DashboardMetrics(BaseModel):
     casos_abiertos_hoy: int

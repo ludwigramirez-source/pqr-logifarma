@@ -64,6 +64,7 @@ class Paciente(Base):
     nombre = Column(String(200), nullable=False)
     apellidos = Column(String(200), nullable=False)
     celular = Column(String(50), nullable=False)
+    email = Column(String(200), nullable=True)
     direccion = Column(Text, nullable=False)
     departamento = Column(String(100), nullable=False)
     ciudad = Column(String(100), nullable=False)
@@ -99,13 +100,15 @@ class Caso(Base):
     fecha_actualizacion = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     fecha_cierre = Column(DateTime, nullable=True)
     tiempo_resolucion_horas = Column(Float, nullable=True)
-    
+    origen = Column(String(20), default='web', nullable=False)  # 'call' o 'web'
+
     paciente = relationship("Paciente", back_populates="casos")
     motivo_obj = relationship("MotivoPQR", back_populates="casos")
     agente_creador = relationship("Usuario", back_populates="casos_creados", foreign_keys=[agente_creador_id])
     agente_asignado = relationship("Usuario", back_populates="casos_asignados", foreign_keys=[agente_asignado_id])
     interacciones = relationship("Interaccion", back_populates="caso")
     historial_estados = relationship("HistorialEstado", back_populates="caso")
+    historial_eventos_new = relationship("HistorialEvento", back_populates="caso")
     alertas = relationship("Alerta", back_populates="caso")
 
 class Interaccion(Base):
@@ -141,14 +144,31 @@ class HistorialEstado(Base):
     
     caso = relationship("Caso", back_populates="historial_estados")
 
+class HistorialEvento(Base):
+    __tablename__ = "historial_eventos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    caso_id = Column(Integer, ForeignKey("casos.id"), nullable=False)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    tipo_evento = Column(String(50), nullable=False)  # cambio_estado, cambio_prioridad, asignacion, interaccion, etc
+    campo_modificado = Column(String(100), nullable=True)
+    valor_anterior = Column(Text, nullable=True)
+    valor_nuevo = Column(Text, nullable=True)
+    comentario = Column(Text, nullable=True)
+    fecha_evento = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    datos_adicionales = Column(Text, nullable=True)  # JSON como string para datos extra
+
+    caso = relationship("Caso", back_populates="historial_eventos_new")
+    usuario = relationship("Usuario")
+
 class Alerta(Base):
     __tablename__ = "alertas"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     caso_id = Column(Integer, ForeignKey("casos.id"), nullable=False)
     tipo_alerta = Column(Enum(TipoAlertaEnum), nullable=False)
     fecha_creacion = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     leida = Column(Boolean, default=False)
     usuario_notificado_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
-    
+
     caso = relationship("Caso", back_populates="alertas")

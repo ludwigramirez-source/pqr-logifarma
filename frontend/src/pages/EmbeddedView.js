@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { pacientesAPI, casosAPI, motivosAPI, ubicacionesAPI } from '../services/api';
+import axios from 'axios';
+import { casosAPI, motivosAPI } from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -7,26 +8,43 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
-import { Search, Save, FileText, History, X, Plus } from 'lucide-react';
+import { Search, Save, FileText, History, X, Plus, CheckCircle } from 'lucide-react';
 import { formatDateShort } from '../lib/utils';
+
+// Función para formatear fecha y hora completa
+const formatearFechaHora = (fechaISO) => {
+  if (!fechaISO) return '';
+  const fecha = new Date(fechaISO);
+  const opciones = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  };
+  return fecha.toLocaleString('es-CO', opciones);
+};
 
 const EmbeddedView = () => {
   const [activeTab, setActiveTab] = useState('gestion');
   const [motivos, setMotivos] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [ciudades, setCiudades] = useState([]);
-  
+
   // Datos del paciente
   const [identificacion, setIdentificacion] = useState('');
   const [paciente, setPaciente] = useState(null);
   const [nombre, setNombre] = useState('');
   const [apellidos, setApellidos] = useState('');
   const [celular, setCelular] = useState('');
+  const [email, setEmail] = useState('');
   const [direccion, setDireccion] = useState('');
   const [departamento, setDepartamento] = useState('');
   const [ciudad, setCiudad] = useState('');
-  
+
   // Datos del caso
   const [numeroCasoBuscar, setNumeroCasoBuscar] = useState('');
   const [casoExistente, setCasoExistente] = useState(null);
@@ -34,11 +52,15 @@ const EmbeddedView = () => {
   const [prioridad, setPrioridad] = useState('MEDIA');
   const [estado, setEstado] = useState('ABIERTO');
   const [descripcion, setDescripcion] = useState('');
-  
+
   // Historial
   const [casosPaciente, setCasosPaciente] = useState([]);
-  
+
   const [loading, setLoading] = useState(false);
+
+  // Modal de confirmación
+  const [showModal, setShowModal] = useState(false);
+  const [numeroRadicacion, setNumeroRadicacion] = useState('');
 
   useEffect(() => {
     loadMotivos();
@@ -47,10 +69,7 @@ const EmbeddedView = () => {
 
   useEffect(() => {
     if (departamento) {
-      const dept = departamentos.find(d => d.nombre === departamento);
-      if (dept) {
-        loadCiudades(dept.id);
-      }
+      loadCiudades(departamento);
     }
   }, [departamento]);
 
@@ -65,20 +84,72 @@ const EmbeddedView = () => {
 
   const loadDepartamentos = async () => {
     try {
-      const response = await ubicacionesAPI.getDepartamentos();
+      // API pública de Colombia - Departamentos
+      const response = await axios.get('https://api-colombia.com/api/v1/Department');
       setDepartamentos(response.data);
     } catch (error) {
       toast.error('Error al cargar departamentos');
     }
   };
 
-  const loadCiudades = async (departamentoId) => {
+  const loadCiudades = async (nombreDepartamento) => {
     try {
-      const response = await ubicacionesAPI.getCiudades(departamentoId);
-      setCiudades(response.data);
+      // Buscar el departamento por nombre
+      const dept = departamentos.find(d => d.name === nombreDepartamento);
+      if (dept) {
+        // API pública de Colombia - Ciudades por departamento
+        const response = await axios.get(`https://api-colombia.com/api/v1/Department/${dept.id}/cities`);
+        setCiudades(response.data);
+      }
     } catch (error) {
       toast.error('Error al cargar ciudades');
     }
+  };
+
+  // Validaciones
+  const validarIdentificacion = (value) => {
+    // Solo números, máximo 10 dígitos (cédulas en Colombia)
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length <= 10) {
+      setIdentificacion(cleaned);
+    }
+  };
+
+  const formatearIdentificacion = (value) => {
+    // Formato con puntos: 1.234.567.890
+    if (!value) return '';
+    const num = value.replace(/\D/g, '');
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
+
+  const validarNombre = (value) => {
+    // Solo letras y espacios
+    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+    if (regex.test(value)) {
+      setNombre(value);
+    }
+  };
+
+  const validarApellidos = (value) => {
+    // Solo letras y espacios
+    const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+    if (regex.test(value)) {
+      setApellidos(value);
+    }
+  };
+
+  const validarCelular = (value) => {
+    // Solo números, debe empezar con 3 o 6, máximo 10 dígitos
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length === 0 || (cleaned[0] === '3' || cleaned[0] === '6')) {
+      if (cleaned.length <= 10) {
+        setCelular(cleaned);
+      }
+    }
+  };
+
+  const validarEmail = (value) => {
+    setEmail(value);
   };
 
   const buscarPaciente = async () => {
@@ -87,29 +158,30 @@ const EmbeddedView = () => {
       return;
     }
 
+    if (identificacion.length < 6) {
+      toast.error('La cédula debe tener al menos 6 dígitos');
+      return;
+    }
+
     try {
-      const response = await pacientesAPI.getAll({ identificacion });
-      if (response.data.length > 0) {
-        const p = response.data[0];
+      const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+      // Usar endpoint embebido que no requiere autenticación
+      const response = await axios.get(`${API_URL}/embedded/paciente/${identificacion}`);
+
+      if (response.data.found) {
+        const p = response.data.paciente;
         setPaciente(p);
         setNombre(p.nombre);
         setApellidos(p.apellidos);
         setCelular(p.celular);
+        setEmail(p.email || '');
         setDireccion(p.direccion);
         setDepartamento(p.departamento);
         setCiudad(p.ciudad);
-        
-        // Buscar casos abiertos o en proceso del paciente
-        const casosResponse = await casosAPI.getAll({ 
-          paciente_identificacion: identificacion,
-          limit: 100 
-        });
-        
-        // Filtrar solo casos ABIERTOS o EN_PROCESO
-        const casosPendientes = casosResponse.data.filter(
-          c => c.estado === 'ABIERTO' || c.estado === 'EN_PROCESO'
-        );
-        
+
+        // Casos ya vienen del endpoint
+        const casosPendientes = response.data.casos;
+
         if (casosPendientes.length > 0) {
           setCasosPaciente(casosPendientes);
           toast.success(`Paciente encontrado con ${casosPendientes.length} caso(s) pendiente(s)`);
@@ -123,6 +195,7 @@ const EmbeddedView = () => {
         setNombre('');
         setApellidos('');
         setCelular('');
+        setEmail('');
         setDireccion('');
         setDepartamento('');
         setCiudad('');
@@ -166,8 +239,7 @@ const EmbeddedView = () => {
     setMotivoId(caso.motivo_id.toString());
     setDescripcion(caso.descripcion);
     toast.success(`Caso ${caso.numero_caso} seleccionado para seguimiento`);
-    
-    // Scroll al formulario del caso
+
     setTimeout(() => {
       const casoSection = document.getElementById('caso-section');
       if (casoSection) {
@@ -184,8 +256,7 @@ const EmbeddedView = () => {
     setMotivoId('');
     setDescripcion('');
     toast.info('Formulario preparado para crear un nuevo caso');
-    
-    // Scroll al formulario del caso
+
     setTimeout(() => {
       const casoSection = document.getElementById('caso-section');
       if (casoSection) {
@@ -201,7 +272,9 @@ const EmbeddedView = () => {
     }
 
     try {
-      const response = await pacientesAPI.getCasos(paciente.id);
+      const API_URL = process.env.REACT_APP_BACKEND_URL + '/api';
+      // Usar endpoint embebido que no requiere autenticación
+      const response = await axios.get(`${API_URL}/embedded/paciente/${paciente.identificacion}/historial`);
       setCasosPaciente(response.data);
       setActiveTab('historial');
     } catch (error) {
@@ -210,8 +283,29 @@ const EmbeddedView = () => {
   };
 
   const guardarCaso = async () => {
+    // Validaciones
     if (!identificacion || !nombre || !apellidos || !celular || !direccion || !departamento || !ciudad) {
-      toast.error('Complete todos los datos del paciente');
+      toast.error('Complete todos los datos obligatorios del paciente');
+      return;
+    }
+
+    if (identificacion.length < 6 || identificacion.length > 10) {
+      toast.error('La cédula debe tener entre 6 y 10 dígitos');
+      return;
+    }
+
+    if (celular.length !== 10) {
+      toast.error('El celular debe tener 10 dígitos');
+      return;
+    }
+
+    if (celular[0] !== '3' && celular[0] !== '6') {
+      toast.error('El celular debe empezar con 3 (móvil) o 6 (fijo)');
+      return;
+    }
+
+    if (email && !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      toast.error('El email no es válido');
       return;
     }
 
@@ -229,6 +323,7 @@ const EmbeddedView = () => {
           nombre,
           apellidos,
           celular,
+          email: email || null,
           direccion,
           departamento,
           ciudad,
@@ -252,14 +347,24 @@ const EmbeddedView = () => {
         },
       };
 
-      await casosAPI.createEmbedded(casoData);
-      toast.success(casoExistente ? 'Caso actualizado exitosamente' : 'Caso creado exitosamente');
-      limpiarFormulario();
+      const response = await casosAPI.createEmbedded(casoData);
+
+      // Extraer número de radicación de la respuesta
+      const numeroRad = response.data.numero_caso;
+      setNumeroRadicacion(numeroRad);
+      setShowModal(true);
+
+      // No limpiar formulario inmediatamente, esperar a que cierren el modal
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Error al guardar caso');
     } finally {
       setLoading(false);
     }
+  };
+
+  const cerrarModal = () => {
+    setShowModal(false);
+    limpiarFormulario();
   };
 
   const limpiarFormulario = () => {
@@ -268,6 +373,7 @@ const EmbeddedView = () => {
     setNombre('');
     setApellidos('');
     setCelular('');
+    setEmail('');
     setDireccion('');
     setDepartamento('');
     setCiudad('');
@@ -277,135 +383,124 @@ const EmbeddedView = () => {
     setPrioridad('MEDIA');
     setEstado('ABIERTO');
     setDescripcion('');
+    setCasosPaciente([]);
   };
 
   return (
-    <div className="min-h-screen p-4 bg-gradient-to-br from-gray-50 to-gray-100" data-testid="embedded-view">
-      <Card className="max-w-4xl mx-auto shadow-lg border-2">
-        <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
+    <div className="min-h-screen p-2 bg-gradient-to-br from-gray-50 to-gray-100" data-testid="embedded-view">
+      <Card className="max-w-6xl mx-auto shadow-lg border-2">
+        <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg py-3 px-4">
           <div className="flex items-center justify-between">
-            <img src="/assets/logo.png" alt="LOGIFARMA" className="h-10 w-auto bg-white px-2 py-1 rounded" />
-            <CardTitle className="text-2xl font-bold">Sistema PQR - Vista Embebida</CardTitle>
+            <img src="/assets/logo.png" alt="LOGIFARMA" className="h-8 w-auto bg-white px-2 py-1 rounded" />
+            <CardTitle className="text-xl font-bold">Sistema de Radicación Callcenter</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="p-6">
+        <CardContent className="p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="gestion" data-testid="tab-gestion">
+            <TabsList className="grid w-full grid-cols-2 mb-4 h-9">
+              <TabsTrigger value="gestion" data-testid="tab-gestion" className="text-sm">
                 <FileText className="h-4 w-4 mr-2" />
                 Gestión PQR
               </TabsTrigger>
-              <TabsTrigger value="historial" data-testid="tab-historial">
+              <TabsTrigger value="historial" data-testid="tab-historial" className="text-sm">
                 <History className="h-4 w-4 mr-2" />
                 Historial
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="gestion" className="space-y-6">
+            <TabsContent value="gestion" className="space-y-4">
               {/* Búsqueda de Paciente */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Search className="h-5 w-5" />
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Search className="h-4 w-4" />
                   Buscar Paciente por Cédula
                 </h3>
                 <div className="flex gap-2">
                   <div className="flex-1">
                     <Input
-                      placeholder="Ingrese cédula del paciente"
-                      value={identificacion}
-                      onChange={(e) => setIdentificacion(e.target.value)}
+                      placeholder="Ingrese cédula del paciente (solo números)"
+                      value={formatearIdentificacion(identificacion)}
+                      onChange={(e) => validarIdentificacion(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && buscarPaciente()}
                       data-testid="input-cedula"
+                      className="h-9"
                     />
                   </div>
-                  <Button onClick={buscarPaciente} data-testid="btn-buscar-paciente">
+                  <Button onClick={buscarPaciente} data-testid="btn-buscar-paciente" size="sm" className="h-9">
                     <Search className="h-4 w-4 mr-2" />
                     Buscar
                   </Button>
                 </div>
                 {paciente && (
                   <>
-                    <div className="p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-semibold text-green-900">
-                            Paciente Encontrado: {paciente.nombre} {paciente.apellidos}
+                          <p className="font-semibold text-sm text-green-900">
+                            ✓ Paciente: {paciente.nombre} {paciente.apellidos}
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            CC: {paciente.identificacion} | Celular: {paciente.celular}
+                          <p className="text-xs text-muted-foreground">
+                            CC: {formatearIdentificacion(paciente.identificacion)} | Tel: {paciente.celular}
                           </p>
                         </div>
-                        <Button onClick={verHistorial} variant="outline" size="sm" data-testid="btn-ver-historial">
-                          <History className="h-4 w-4 mr-2" />
-                          Ver Historial Completo
+                        <Button onClick={verHistorial} variant="outline" size="sm" data-testid="btn-ver-historial" className="h-8 text-xs">
+                          <History className="h-3 w-3 mr-1" />
+                          Ver Historial
                         </Button>
                       </div>
                     </div>
 
                     {/* Casos Pendientes del Paciente */}
                     {casosPaciente.length > 0 && (
-                      <div className="p-4 border-2 border-orange-200 rounded-lg bg-orange-50">
-                        <div className="flex items-center justify-between mb-3">
+                      <div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+                        <div className="flex items-center justify-between mb-2">
                           <div>
-                            <h4 className="font-bold text-lg text-orange-900">
-                              ⚠️ Casos Pendientes de Resolución
+                            <h4 className="font-bold text-sm text-orange-900">
+                              ⚠️ {casosPaciente.length} Caso(s) Pendiente(s)
                             </h4>
-                            <p className="text-sm text-orange-700">
-                              Este paciente tiene {casosPaciente.length} caso(s) abierto(s) o en proceso
-                            </p>
                           </div>
-                          <Button 
+                          <Button
                             onClick={crearNuevoCaso}
                             variant="outline"
                             size="sm"
-                            className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                            className="border-orange-400 text-orange-700 hover:bg-orange-100 h-8 text-xs"
                             data-testid="btn-crear-caso-nuevo-directo"
                           >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Crear Caso Nuevo
+                            <Plus className="h-3 w-3 mr-1" />
+                            Crear Nuevo
                           </Button>
                         </div>
-                        
+
                         <div className="space-y-2">
                           {casosPaciente.map((caso) => (
                             <div
                               key={caso.id}
-                              className="p-3 bg-white border-2 rounded-lg hover:shadow-md transition-shadow"
+                              className="p-2 bg-white border rounded-lg hover:shadow transition-shadow"
                             >
-                              <div className="flex items-start justify-between">
+                              <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <p className="font-bold text-base">{caso.numero_caso}</p>
-                                    <span className={`estado-badge-${caso.estado} text-xs`}>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-bold text-sm">{caso.numero_caso}</p>
+                                    <span className={`estado-badge-${caso.estado} text-xs px-1.5 py-0.5`}>
                                       {caso.estado.replace('_', ' ')}
                                     </span>
-                                    <span className={`priority-badge-${caso.prioridad} text-xs`}>
-                                      {caso.prioridad}
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatDateShort(caso.fecha_creacion)}
                                     </span>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    📅 Creado: {formatDateShort(caso.fecha_creacion)}
-                                  </p>
                                 </div>
                                 <Button
                                   onClick={() => seleccionarCasoPendiente(caso)}
                                   size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700"
+                                  className="bg-blue-600 hover:bg-blue-700 h-7 text-xs"
                                   data-testid={`btn-seleccionar-caso-${caso.id}`}
                                 >
-                                  <FileText className="h-4 w-4 mr-1" />
-                                  Dar Seguimiento
+                                  <FileText className="h-3 w-3 mr-1" />
+                                  Seguimiento
                                 </Button>
                               </div>
                             </div>
                           ))}
-                        </div>
-                        
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-xs text-blue-900">
-                            <strong>💡 Tip:</strong> Si la llamada es sobre uno de estos casos, haz clic en "Dar Seguimiento". 
-                            Si es un nuevo problema, haz clic en "Crear Caso Nuevo".
-                          </p>
                         </div>
                       </div>
                     )}
@@ -413,236 +508,234 @@ const EmbeddedView = () => {
                 )}
               </div>
 
-              {/* Datos del Paciente */}
-              <div className="space-y-4 p-4 border-2 rounded-lg bg-white">
-                <h3 className="text-lg font-semibold">Datos del Paciente</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Identificación *</Label>
-                    <Input value={identificacion} disabled />
-                  </div>
-                  <div>
-                    <Label>Nombre *</Label>
-                    <Input
-                      value={nombre}
-                      onChange={(e) => setNombre(e.target.value)}
-                      disabled={!!paciente}
-                      data-testid="input-nombre"
-                    />
-                  </div>
-                  <div>
-                    <Label>Apellidos *</Label>
-                    <Input
-                      value={apellidos}
-                      onChange={(e) => setApellidos(e.target.value)}
-                      disabled={!!paciente}
-                      data-testid="input-apellidos"
-                    />
-                  </div>
-                  <div>
-                    <Label>Celular *</Label>
-                    <Input
-                      value={celular}
-                      onChange={(e) => setCelular(e.target.value)}
-                      disabled={!!paciente}
-                      data-testid="input-celular"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Dirección *</Label>
-                    <Input
-                      value={direccion}
-                      onChange={(e) => setDireccion(e.target.value)}
-                      disabled={!!paciente}
-                      data-testid="input-direccion"
-                    />
-                  </div>
-                  <div>
-                    <Label>Departamento *</Label>
-                    <Select value={departamento} onValueChange={setDepartamento} disabled={!!paciente}>
-                      <SelectTrigger data-testid="select-departamento">
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {departamentos.map((dept) => (
-                          <SelectItem key={dept.id} value={dept.nombre}>
-                            {dept.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Ciudad *</Label>
-                    <Select value={ciudad} onValueChange={setCiudad} disabled={!!paciente || !departamento}>
-                      <SelectTrigger data-testid="select-ciudad">
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ciudades.map((c) => (
-                          <SelectItem key={c.id} value={c.nombre}>
-                            {c.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Información del Caso */}
-              <div id="caso-section" className="space-y-4 p-4 border-2 rounded-lg bg-white">
-                <h3 className="text-lg font-semibold">Información del Caso</h3>
-                
-                <div className="flex gap-2 mb-4">
-                  <div className="flex-1">
-                    <Label>Buscar Caso Existente</Label>
-                    <Input
-                      placeholder="Ej: PQR-20241122-0001"
-                      value={numeroCasoBuscar}
-                      onChange={(e) => setNumeroCasoBuscar(e.target.value)}
-                      data-testid="input-numero-caso"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <Button onClick={buscarCaso} variant="outline" data-testid="btn-buscar-caso">
-                      <Search className="h-4 w-4 mr-2" />
-                      Buscar
-                    </Button>
-                    {casoExistente && (
-                      <Button
-                        onClick={() => {
-                          setCasoExistente(null);
-                          setNumeroCasoBuscar('');
-                          setEstado('ABIERTO');
-                          setPrioridad('MEDIA');
-                          setMotivoId('');
-                          setDescripcion('');
-                        }}
-                        variant="ghost"
-                        size="icon"
-                        className="ml-2"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {casoExistente && (
-                  <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-blue-900 mb-1">
-                          📋 Dando seguimiento al caso: {casoExistente.numero_caso}
-                        </p>
-                        <p className="text-xs text-blue-700">
-                          Puede actualizar el estado, prioridad o agregar más observaciones a este caso existente
-                        </p>
+              {/* Layout de 2 columnas: Datos del Paciente + Información del Caso */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* COLUMNA IZQUIERDA: Datos del Paciente */}
+                <div className="space-y-3 p-4 border-2 rounded-lg bg-white">
+                  <h3 className="text-base font-semibold">Datos del Paciente</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Identificación * (solo números)</Label>
+                        <Input value={formatearIdentificacion(identificacion)} disabled className="h-9 text-sm" />
                       </div>
-                      <Button
-                        onClick={() => {
-                          setCasoExistente(null);
-                          setNumeroCasoBuscar('');
-                          setEstado('ABIERTO');
-                          setPrioridad('MEDIA');
-                          setMotivoId('');
-                          setDescripcion('');
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="text-blue-700 hover:text-blue-900"
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        Cancelar
+                      <div>
+                        <Label className="text-xs">Nombre * (solo letras)</Label>
+                        <Input
+                          value={nombre}
+                          onChange={(e) => validarNombre(e.target.value)}
+                          disabled={!!paciente}
+                          data-testid="input-nombre"
+                          placeholder="Solo letras"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Apellidos * (solo letras)</Label>
+                        <Input
+                          value={apellidos}
+                          onChange={(e) => validarApellidos(e.target.value)}
+                          disabled={!!paciente}
+                          data-testid="input-apellidos"
+                          placeholder="Solo letras"
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Celular/Teléfono * (3XX o 6XX)</Label>
+                        <Input
+                          value={celular}
+                          onChange={(e) => validarCelular(e.target.value)}
+                          disabled={!!paciente}
+                          data-testid="input-celular"
+                          placeholder="3XXXXXXXXX o 6XXXXXXXXX"
+                          maxLength={10}
+                          className="h-9 text-sm"
+                        />
+                        {celular && celular.length > 0 && celular[0] !== '3' && celular[0] !== '6' && (
+                          <p className="text-xs text-red-500 mt-1">Debe empezar con 3 o 6</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Email (opcional)</Label>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={(e) => validarEmail(e.target.value)}
+                        disabled={!!paciente}
+                        data-testid="input-email"
+                        placeholder="correo@ejemplo.com"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Dirección *</Label>
+                      <Input
+                        value={direccion}
+                        onChange={(e) => setDireccion(e.target.value)}
+                        disabled={!!paciente}
+                        data-testid="input-direccion"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Departamento *</Label>
+                        <Select value={departamento} onValueChange={setDepartamento} disabled={!!paciente}>
+                          <SelectTrigger data-testid="select-departamento" className="h-9 text-sm">
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departamentos.map((dept) => (
+                              <SelectItem key={dept.id} value={dept.name}>
+                                {dept.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Ciudad/Municipio *</Label>
+                        <Select value={ciudad} onValueChange={setCiudad} disabled={!!paciente || !departamento}>
+                          <SelectTrigger data-testid="select-ciudad" className="h-9 text-sm">
+                            <SelectValue placeholder="Primero seleccione departamento" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ciudades.map((c) => (
+                              <SelectItem key={c.id} value={c.name}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* COLUMNA DERECHA: Información del Caso */}
+                <div id="caso-section" className="space-y-3 p-4 border-2 rounded-lg bg-white">
+                  <h3 className="text-base font-semibold">Información del Caso</h3>
+
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs">Buscar Caso Existente</Label>
+                      <Input
+                        placeholder="Ej: RAD-123"
+                        value={numeroCasoBuscar}
+                        onChange={(e) => setNumeroCasoBuscar(e.target.value)}
+                        data-testid="input-numero-caso"
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button onClick={buscarCaso} variant="outline" data-testid="btn-buscar-caso" size="sm" className="h-9">
+                        <Search className="h-4 w-4 mr-1" />
+                        Buscar
                       </Button>
                     </div>
                   </div>
-                )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Motivo de la llamada *</Label>
-                    <Select value={motivoId} onValueChange={setMotivoId}>
-                      <SelectTrigger data-testid="select-motivo">
-                        <SelectValue placeholder="Seleccionar motivo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {motivos.map((m) => (
-                          <SelectItem key={m.id} value={m.id.toString()}>
-                            {m.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Prioridad</Label>
-                    <Select value={prioridad} onValueChange={setPrioridad}>
-                      <SelectTrigger data-testid="select-prioridad">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALTA">Alta</SelectItem>
-                        <SelectItem value="MEDIA">Media</SelectItem>
-                        <SelectItem value="BAJA">Baja</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Descripción / Observaciones *</Label>
-                    <Textarea
-                      value={descripcion}
-                      onChange={(e) => setDescripcion(e.target.value)}
-                      rows={4}
-                      placeholder="Describa el motivo de la llamada..."
-                      data-testid="textarea-descripcion"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>Estado del caso</Label>
-                    <div className="flex gap-4 mt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="ABIERTO"
-                          checked={estado === 'ABIERTO'}
-                          onChange={(e) => setEstado(e.target.value)}
-                          className="w-4 h-4"
-                        />
-                        <span>Abierto (nuevo caso)</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="EN_PROCESO"
-                          checked={estado === 'EN_PROCESO'}
-                          onChange={(e) => setEstado(e.target.value)}
-                          className="w-4 h-4"
-                        />
-                        <span>En Proceso (seguimiento)</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="CERRADO"
-                          checked={estado === 'CERRADO'}
-                          onChange={(e) => setEstado(e.target.value)}
-                          className="w-4 h-4"
-                        />
-                        <span>Cerrado (resuelto)</span>
-                      </label>
+                  {casoExistente && (
+                    <div className="p-2 bg-blue-50 border border-blue-300 rounded text-xs">
+                      <p className="font-semibold text-blue-900">
+                        📋 Seguimiento: {casoExistente.numero_caso}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs">Motivo de la llamada *</Label>
+                        <Select value={motivoId} onValueChange={setMotivoId}>
+                          <SelectTrigger data-testid="select-motivo" className="h-9 text-sm">
+                            <SelectValue placeholder="Seleccionar motivo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {motivos.map((m) => (
+                              <SelectItem key={m.id} value={m.id.toString()}>
+                                {m.nombre}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Prioridad</Label>
+                        <Select value={prioridad} onValueChange={setPrioridad}>
+                          <SelectTrigger data-testid="select-prioridad" className="h-9 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALTA">Alta</SelectItem>
+                            <SelectItem value="MEDIA">Media</SelectItem>
+                            <SelectItem value="BAJA">Baja</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Descripción / Observaciones *</Label>
+                      <Textarea
+                        value={descripcion}
+                        onChange={(e) => setDescripcion(e.target.value)}
+                        rows={3}
+                        placeholder="Describa el motivo de la llamada..."
+                        data-testid="textarea-descripcion"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Estado del caso</Label>
+                      <div className="flex flex-col gap-2 mt-2">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            value="ABIERTO"
+                            checked={estado === 'ABIERTO'}
+                            onChange={(e) => setEstado(e.target.value)}
+                            className="w-3 h-3"
+                          />
+                          <span>Abierto (nuevo caso)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            value="EN_PROCESO"
+                            checked={estado === 'EN_PROCESO'}
+                            onChange={(e) => setEstado(e.target.value)}
+                            className="w-3 h-3"
+                          />
+                          <span>En Proceso (seguimiento)</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs">
+                          <input
+                            type="radio"
+                            value="CERRADO"
+                            checked={estado === 'CERRADO'}
+                            onChange={(e) => setEstado(e.target.value)}
+                            className="w-3 h-3"
+                          />
+                          <span>Cerrado (resuelto)</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Botones de acción */}
-              <div className="flex gap-4 justify-end">
+              <div className="flex gap-3 justify-end">
                 <Button
                   variant="outline"
                   onClick={limpiarFormulario}
                   data-testid="btn-limpiar"
+                  size="sm"
+                  className="h-9"
                 >
                   Limpiar Formulario
                 </Button>
@@ -650,7 +743,8 @@ const EmbeddedView = () => {
                   onClick={guardarCaso}
                   disabled={loading}
                   data-testid="btn-guardar-caso"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 h-9"
+                  size="sm"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {loading ? 'Guardando...' : 'Guardar Caso'}
@@ -692,7 +786,7 @@ const EmbeddedView = () => {
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Identificación</p>
-                          <p className="font-semibold">{paciente.identificacion}</p>
+                          <p className="font-semibold">{formatearIdentificacion(paciente.identificacion)}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Celular</p>
@@ -733,7 +827,10 @@ const EmbeddedView = () => {
                                   <div className="space-y-1 flex-1">
                                     <p className="font-bold text-lg text-green-700">{caso.numero_caso}</p>
                                     <p className="text-sm text-muted-foreground">
-                                      📅 {formatDateShort(caso.fecha_creacion)}
+                                      📅 {formatearFechaHora(caso.fecha_creacion)}
+                                    </p>
+                                    <p className="text-sm font-semibold text-blue-700 mt-1">
+                                      📋 {caso.motivo_nombre || 'Sin motivo'}
                                     </p>
                                   </div>
                                   <div className="flex flex-col items-end gap-2">
@@ -745,6 +842,12 @@ const EmbeddedView = () => {
                                     </span>
                                   </div>
                                 </div>
+                                {caso.descripcion && (
+                                  <div className="mt-3 pt-3 border-t">
+                                    <p className="text-xs text-muted-foreground mb-1">Descripción:</p>
+                                    <p className="text-sm">{caso.descripcion}</p>
+                                  </div>
+                                )}
                               </CardContent>
                             </Card>
                           ))}
@@ -758,6 +861,38 @@ const EmbeddedView = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmación */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-6 w-6" />
+              {casoExistente ? 'Caso Actualizado' : 'Caso Creado Exitosamente'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                {casoExistente ? 'Número de Radicación Actualizado' : 'Número de Radicación Asignado'}
+              </p>
+              <div className="p-6 bg-green-50 border-2 border-green-200 rounded-lg">
+                <p className="text-4xl font-bold text-green-700 tracking-wider">
+                  {numeroRadicacion}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Por favor, comunique este número al cliente para su seguimiento
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <Button onClick={cerrarModal} className="bg-green-600 hover:bg-green-700">
+              Cerrar y Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
