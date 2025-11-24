@@ -4,7 +4,12 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
-        <meta name="description" content="A product of emergent.sh" />
+        <meta name="description" content="Sistema de Gestión PQR - LOGIFARMA" />
+        <link rel="icon" type="image/png" href="%PUBLIC_URL%/favicon.png" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
         <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -18,7 +23,7 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-        <title>Emergent | Fullstack App</title>
+        <title>Gestión PQR LF</title>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <!--
         These two scripts have been added for the testing, please do not edit or remove them
@@ -63,9 +68,9 @@
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
         <a
-            id="emergent-badge"
+            id="iptegra-badge"
             target="_blank"
-            href="https://app.emergent.sh/?utm_source=emergent-badge"
+            href="https://iptegra.com"
             style="
                 display: flex !important;
                 align-items: center !important;
@@ -73,40 +78,52 @@
                 bottom: 20px;
                 right: 20px;
                 text-decoration: none;
-                padding: 6px 10px;
-                font-family: -apple-system, BlinkMacSystemFont,
-                    &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu, Cantarell,
-                    &quot;Open Sans&quot;, &quot;Helvetica Neue&quot;,
-                    sans-serif !important;
-                font-size: 12px !important;
+                padding: 8px 14px;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+                    &quot;Segoe UI&quot;, Roboto, sans-serif !important;
+                font-size: 13px !important;
+                font-weight: 500 !important;
+                letter-spacing: -0.01em !important;
                 z-index: 9999 !important;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-                border-radius: 8px !important;
-                background-color: #ffffff !important;
-                border: 1px solid rgba(255, 255, 255, 0.25) !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+                border-radius: 12px !important;
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%) !important;
+                border: 1px solid rgba(0, 0, 0, 0.06) !important;
+                transition: all 0.2s ease !important;
             "
+            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(0, 0, 0, 0.15)'"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0, 0, 0, 0.1)'"
         >
             <div
-                style="display: flex; flex-direction: row; align-items: center"
+                style="display: flex; flex-direction: row; align-items: center; gap: 8px"
             >
-                <img
-                    style="width: 20px; height: 20px; margin-right: 8px"
-                    src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4"
-                />
-                <p
+                <svg
+                    style="width: 18px; height: 18px; color: #059669"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                >
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span
                     style="
-                        color: #000000;
-                        font-family: -apple-system, BlinkMacSystemFont,
-                            &quot;Segoe UI&quot;, Roboto, Oxygen, Ubuntu,
-                            Cantarell, &quot;Open Sans&quot;,
-                            &quot;Helvetica Neue&quot;, sans-serif !important;
-                        font-size: 12px !important;
-                        align-items: center;
-                        margin-bottom: 0;
+                        color: #1f2937;
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+                            &quot;Segoe UI&quot;, Roboto, sans-serif !important;
+                        font-size: 13px !important;
+                        font-weight: 500 !important;
+                        letter-spacing: -0.01em !important;
+                        margin: 0;
                     "
                 >
-                    Made with Emergent
-                </p>
+                    Made by <strong style="font-weight: 600; color: #059669">IPTEGRA</strong>
+                </span>
             </div>
         </a>
         <script>

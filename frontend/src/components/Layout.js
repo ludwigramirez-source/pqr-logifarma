@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './ui/button';
-import { Home, FileText, Bell, Settings, LogOut, Menu, X } from 'lucide-react';
+import { Home, FileText, Bell, BarChart3, Settings, LogOut, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Layout = () => {
@@ -20,6 +20,7 @@ const Layout = () => {
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/casos', icon: FileText, label: 'Casos' },
     { path: '/alertas', icon: Bell, label: 'Alertas' },
+    { path: '/reportes', icon: BarChart3, label: 'Reportes' },
   ];
 
   if (user?.rol === 'administrador') {
@@ -41,9 +42,6 @@ const Layout = () => {
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             <img src="/assets/logo.png" alt="LOGIFARMA" className="h-10 w-auto" />
-            <h1 className="text-xl font-bold" style={{ color: 'hsl(141, 81%, 31%)' }}>
-              Sistema PQR
-            </h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">

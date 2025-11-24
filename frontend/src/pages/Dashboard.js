@@ -89,7 +89,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6" data-testid="dashboard">
       <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>Dashboard</h1>
+        <h1 className="page-title text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>Dashboard</h1>
         <p className="text-muted-foreground">Métricas y estadísticas del sistema PQR</p>
       </div>
 

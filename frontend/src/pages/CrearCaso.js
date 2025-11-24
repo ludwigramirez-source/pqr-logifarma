@@ -156,7 +156,7 @@ const CrearCaso = () => {
   return (
     <div className="space-y-6" data-testid="crear-caso-page">
       <div>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
+        <h1 className="page-title text-3xl font-bold mb-2" style={{ color: 'hsl(141, 81%, 31%)' }}>
           Crear Nuevo Caso
         </h1>
         <p className="text-muted-foreground">Registrar un nuevo caso PQR</p>
