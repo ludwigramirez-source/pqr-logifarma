@@ -318,22 +318,22 @@ const EmbeddedView = () => {
     }
 
     setLoading(true);
-
+    
+    // recolecta de datos de la url
     const omnileadsFromUrl = {
-      call_id: searchParams.get("call_id"),
-      campaign_id: searchParams.get("campaign_id"),
-      campaign_name: searchParams.get("campaign_name"),
-      campaign_type: searchParams.get("campaign_type"),
-      agent_id: searchParams.get("agent_id"),
-      agent_username: searchParams.get("agent_username"),
-      agent_name: searchParams.get("agent_name"),
-      telefono: searchParams.get("telefono"),
-      datetime: searchParams.get("datetime"),
-      rec_filename: searchParams.get("rec_filename"),
+      campaign_id: searchParams.get("campaign_id") ?? "",
+      campaign_name: searchParams.get("campaign_name") ?? "",
+      campaign_type: searchParams.get("campaign_type") ?? "",
+      agent_id: searchParams.get("agent_id") ?? "",
+      agent_username: searchParams.get("agent_username") ?? "",
+      agent_name: searchParams.get("agent_name") ?? "",
+      datetime: searchParams.get("datetime") ?? "",
+
+      // parametros Omni 1.20
+      telefono: searchParams.get("telefono") ?? "",
+      rec_filename: searchParams.get("rec_filename") ?? "",
+      call_id: searchParams.get("call_id") ?? ""
     };
-
-    console.log(omnileadsFromUrl)
-
 
     try {
       const casoData = {
